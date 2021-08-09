@@ -32,14 +32,14 @@ function zeitungenrpg_install()
 	global $db, $mybb; 
 	
 	//LEGE TABELLE AN Zeitung
-	$db->write_query("CREATE TABLE `" . TABLE_PREFIX . "paper` (
-	`cid` NOT NULL auto_increment,
+	$db->write_query("CREATE TABLE `".TABLE_PREFIX."paper` (
+	`cid` int(10) NOT NULL auto_increment,
     `paper` varchar(500) CHARACTER SET utf8 NOT NULL,
     PRIMARY KEY (`cid`)
     ) ENGINE=MyISAM".$db->build_create_table_collation());
 	
 	//LEGE TABELLE AN Artikel
-	$db->write_query("CREATE TABLE `" . TABLE_PREFIX . "paper_article` (
+	$db->write_query("CREATE TABLE `".TABLE_PREFIX."paper_article` (
 	`uid` int(10) NOT NULL,
 	`cid` int(11) NOT NULL AUTO_INCREMENT,
 	`articletitle` varchar (255) CHARACTER SET utf8 NOT NULL,
