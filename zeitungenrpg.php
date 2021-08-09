@@ -32,22 +32,21 @@ function zeitungenrpg_install()
 	global $db, $mybb; 
 	
 	//LEGE TABELLE AN Zeitung
-	$db->write_query("CREATE TABLE `".TABLE_PREFIX."paper` (
-	`zid`int(10) NOT NULL auto_increment,
-	`papertitle` varchar (255) CHARACTER SET utf8 NOT NULL,
-    `paperdesc` longtext CHARACTER SET utf8 NOT NULL,
-    PRIMARY KEY (`zid`)
+	$db->write_query("CREATE TABLE `" . TABLE_PREFIX . "paper` (
+	`cid` NOT NULL auto_increment,
+    `paper` varchar(500) CHARACTER SET utf8 NOT NULL,
+    PRIMARY KEY (`cid`)
     ) ENGINE=MyISAM".$db->build_create_table_collation());
 	
 	//LEGE TABELLE AN Artikel
-	$db->write_query("CREATE TABLE `".TABLE_PREFIX."paper_article` (
-	`zid` int(11) NOT NULL AUTO_INCREMENT,
+	$db->write_query("CREATE TABLE `" . TABLE_PREFIX . "paper_article` (
+	`uid` int(10) NOT NULL,
+	`cid` int(11) NOT NULL AUTO_INCREMENT,
 	`articletitle` varchar (255) CHARACTER SET utf8 NOT NULL,
 	`article` longtext CHARACTER SET utf8 NOT NULL,
 	`articlepicture` varchar (255) CHARACTER SET utf8 NOT NULL,
-	`articleauthor` varchar (255) CHARACTER SET utf8 NOT NULL,
 	`articledate` varchar (140) NOT NULL, 
-	PRIMARY KEY (`zid`)
+	PRIMARY KEY (`cid`)
 	) ENGINE=MyISAM CHARACTER SET utf8 COLLATE utf8_general_ci;");
 	
 	// EINSTELLUNGEN 
@@ -103,11 +102,8 @@ function zeitungenrpg_install()
 <td class="thead"><strong>Zeitungsübersicht</strong></td>
 </tr>
 <tr>
-<td>Herzlich Willkommen in einer Überischtsseite unserer möglichen Zeitungen. Wenn ihr auf den Titel einer Zeitung klickt, kommt ihr zu einer Übersicht der jeweiligen Artikel. </td>
-</tr>
-<tr>
 <td class="trow1" align="center">
-VARIABLE FÜR ZEITUNGEN EINFÜGEN
+Hier stehen dann die Zeitungen. 
 </td>
 </tr>
 </table>
@@ -125,10 +121,10 @@ VARIABLE FÜR ZEITUNGEN EINFÜGEN
 		
 		
 	$insert_array = array(
-'title' => 'paper_articel_main',
+'title' => 'paper_articel',
 'template' => $db->escape_string('<html>
 <head>
-<title>{$mybb->settings[\'bbname\']} - Artikelübersicht </title>
+<title>{$mybb->settings[\'bbname\']} - Artikel </title>
 {$headerinclude}
 </head>
 <body>
@@ -202,71 +198,39 @@ $insert_array = array(
 <body>
 {$header}
 <table border="0" cellspacing="{$theme[\'borderwidth\']}" cellpadding="{$theme[\'tablespace\']}" class="tborder">
-	<tr>
-	<td class="thead" colspan="2"><strong>Neuer Artikel</strong></td>
-	</tr>
-	<tr>
-		<td class="trow1" align="center" valign="top" width="30%">
+<tr>
+<td class="thead" colspan="2"><strong>Neuer Artikel</strong></td>
+</tr>
+<tr>
+<td class="trow1" align="center" valign="top" width="30%">
+{$wiki_menu}
 		</td>
 		<td class="trow1" align="center" valign="top">
-			<form id="add_article" method="post" action="misc.php?action=add_article">
-				<table width="90%">
-					<tr><td class="thead" colspan="2"> <strong>Neuen Artikel erstellen</strong></td></tr>
-					<tr><td class="trow1"><strong>Zeitung auswählen</strong></td>
-					<tr><td class="trow2">
-						<select name="paper" required>
-							<option value="%">Zeitung wählen</option>
-							{$papers}
-						</select>
-					</td></tr>
-					<tr>
-						<td class="trow1"><strong>Artikeltitel</strong>
-							<div class="smalltext">Wie soll der Titel des Artikels lauten?</div>
-						</td>
-						<td class="trow2">
-							<input type="text" name="articletitle" id="articletitle" placeholder="Artikeltitel" class="textbox" required /> 
-						</td>
-					</tr>
-					<tr>
-						<td class="trow1"><strong>Artikelbild</strong>
-							<div class="smalltext">Hast du ein Bild für den Artikel?</div>
-						</td>
-						<td class="trow2">
-							<input type="text" name="articlepicture" id="articlepicture" placeholder="link zum Bild" class="textbox" required /> 
-						</td>
-					</tr>
-					<tr>
-						<td class="trow1"><strong>Datum</strong>
-							<div class="smalltext">Wann ist der Artikel erschienen?</div>
-						</td>
-						<td class="trow2">
-							<input type="text" name="articledate" id="articledate" placeholder="Artikeldatum" class="textbox" required /> 
-						</td>
-					</tr>
-					<tr>
-						<td class="trow1"><strong>Artikel</strong>
-						</td>
-						<td class="trow2">
-							<textarea class="textarea" name="article" id="article" rows="6" cols="30" style="width: 95%"></textarea>
-						</td>
-					</tr>
-					<tr>
-						<td class="trow1"><strong>Autor</strong>
-							<div class="smalltext">Welcher Reporter oder welche Reporterin hat den Artikel verfasst?</div>
-						</td>
-						<td class="trow2">
-							<input type="text" name="articleauthor" id="articleauthor" placeholder="Autor des Artikels" class="textbox" required /> 
-						</td>
-					</tr>
-					<tr>
-						<td class="tcat" colspan="2" align="center">
-							<input type="submit" name="add_article_entry" value="Eintrag einreichen" id="submit" class="button">
-						</td>
-					</tr>
-				</table>
-			</form>
+		{$new_paper}
+			
+		<form id="add_article" method="post" action="misc.php?action=add_article">
+		<table width="90%"><tr><td class="thead" colspan="2"><strong>{$lang->formular_entry}</strong></td></tr>
+			<tr><td class="trow1"><strong>Zeitung</strong></td>
+				<td class="trow2"><select name="paper" required>
+					<option value="%">Zeitung wählen</option>
+					{$papers}
+					</select> 
+				</td></tr>
+			<tr><td class="trow1"><strong>Artikel-Linktitel</strong>
+			<div class="smalltext">Wie soll der Artikel in der Übersicht heißen</div></td><td class="trow2"><input type="text" name="linktitle" id="linktitle" placeholder="Link-Artikeltitel" class="textbox" required /> </td></tr>
+				<tr><td class="trow1"><strong>Link</strong>
+				<div class="smalltext">Wie soll der Link lauten? misc.php?paperarticle=linkname</div></td><td class="trow2"><input type="text" name="link" id="link" placeholder="verschwunden,politik" class="textbox" required /></td></tr>
+			<tr><td class="trow1"><strong>Überschrift</strong></td><td class="trow2"><input type="text" name="title" id="title" placeholder="Überschrift des Artikels" class="textbox" required /></td></tr>
+			<tr><td class="trow1" colspan="2"><strong>Artikel</strong></td></tr>
+			<tr><td class="trow2" colspan="2"><textarea class="textarea" name="articletext" id="articletext" rows="6" cols="30" style="width: 95%"></textarea></td></tr>
+			<tr><td class="tcat" colspan="2" align="center"><input type="submit" name="add_article_entry" value="Eintrag einreichen" id="submit" class="button"></td></tr>
+		</table>
+</form>
 		</td>
-	</tr>
+		</tr>
+</table>
+</td>
+</tr>
 </table>
 {$footer}
 </body>
