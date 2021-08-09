@@ -25,28 +25,26 @@ function zeitungenrpg_info()
 }
 
 
-// Diese Funktion installiert das Plugin
-// Hier legen wir Datenbanktabellen an, aktualisieren Tabellen, erstellen die Settings für das Plugin und legen die Templates an
 function zeitungenrpg_install()
 {
 	global $db, $mybb; 
 	
 	//LEGE TABELLE AN Zeitung
 	$db->write_query("CREATE TABLE `" . TABLE_PREFIX . "paper` (
-	`cid` NOT NULL auto_increment,
+	`zid` NOT NULL auto_increment,
     `paper` varchar(500) CHARACTER SET utf8 NOT NULL,
-    PRIMARY KEY (`cid`)
+    PRIMARY KEY (`zid`)
     ) ENGINE=MyISAM".$db->build_create_table_collation());
 	
 	//LEGE TABELLE AN Artikel
 	$db->write_query("CREATE TABLE `" . TABLE_PREFIX . "paper_article` (
-	`uid` int(10) NOT NULL,
-	`cid` int(11) NOT NULL AUTO_INCREMENT,
+	`zid` int(11) NOT NULL AUTO_INCREMENT,
 	`articletitle` varchar (255) CHARACTER SET utf8 NOT NULL,
 	`article` longtext CHARACTER SET utf8 NOT NULL,
 	`articlepicture` varchar (255) CHARACTER SET utf8 NOT NULL,
+	`articleauthor` varchar (255) CHARACTER SET utf8 NOT NULL,
 	`articledate` varchar (140) NOT NULL, 
-	PRIMARY KEY (`cid`)
+	PRIMARY KEY (`zid`)
 	) ENGINE=MyISAM CHARACTER SET utf8 COLLATE utf8_general_ci;");
 	
 	// EINSTELLUNGEN 
@@ -244,6 +242,7 @@ $insert_array = array(
 
 }
 
+//INSTALLIEREN VOM PLUGIN
 function zeitungenrpg_is_installed()
 {
   global $db;
@@ -254,6 +253,7 @@ function zeitungenrpg_is_installed()
     return false;
 }
 
+//DEINSTALLIEREN VOM PLUGIN
 function zeitungenrpg_uninstall()
 {
 	global $db;
@@ -275,8 +275,7 @@ function zeitungenrpg_uninstall()
     rebuild_settings();
 }
 
-//Hier wird das Plugin aktiviert. Ich werfe hier immer die Variablen rein, die in Templates eingefügt werden müssen
-
+//AKTIVIEREN VOM PLUGIN
 function zeitungenrpg_activate()
 {
 	require MYBB_ROOT."/inc/adminfunctions_templates.php";
@@ -284,33 +283,85 @@ function zeitungenrpg_activate()
     
 }
 
+//DEAKTIVIEREN VOM PLUGIN
 function zeitungenrpg_deactivate()
 {
   require MYBB_ROOT."/inc/adminfunctions_templates.php";
     find_replace_templatesets("header", "#".preg_quote('{$paper_header}')."#i", '', 0);
 }
 
-/***
- * Jetzt kommen die Pluginspeziffischen Funktionen
- * MyBB arbeitet hier mit Hooks. Übersetzt 'Haken' Diese Haken sind im Grunde Ansatzpunkte, die in den Mybb Originaldateien
- * zu finden sind. Man wähl einen Hook und setzt dann quasi an der Stelle in der Orginaldatei an, in der der Haken eingefügt ist.
- * 
- * Alle Hooks findet man hier: https://docs.mybb.com/1.8/development/plugins/hooks/ 
- * Wenn du jetzt zum Beispiel etwas am Forumdisplay ändern willst suchst du hier nach 'forumdisplay' und schaust, welche Haken mybb
- * zur Verfügung stellt. In dem Fall finden wir ein paar. Man kann jetzt in den Code schauen, welchen genau man braucht, in dem man sich 
- * die Stelle im forumdisplay.php anschaut. in der Regel sind sie aber vom Namen her schon ziemlich eindeutig :) 
- * Ich verrate dir einfach, dass wir an dieser stelle den hier brauchen: forumdisplay_thread
- * 
- * Jetzt müssen wir der Plugin datei sagen, welche Funktion hier ansetzen soll
- */
-$plugins->add_hook("forumdisplay_thread", "profilefieldsForumdisplay_showFields");
-//Vorne kommt der Name des Hooks, den haben wir rausgesucht und dann der Name der Funktion, die wir schreiben. 
+//LINK FÜR DIE HAUPTSEITE
+$plugins->add_hook('global_start', 'paper_global');
 
-//jetzt erstellen wir die Funktion
-function zeitungenrpg_showFields()
-{
-  //Hier passiert dann die ganze Magic.
+function paper_global(){
+    global $db, $templates, $mybb, $lang, $paper_header;
+    $lang->load('paper');
+    
+    $paper_header = "<li><a href=\"{$mybb->settings['bburl']}/misc.php?action=paper\" class=\"help\">Forenzeitungen</a></li>";
 }
 
-//natürlich kann man pro plugin verschiedene Hooks verwenden :) Entsprechen würdest du einfach das 
-//add_hook nochmal machen und eben eine weitere funktion erstellen
+
+//HAUPTSEITE ERSTELLEN
+if($mybb->get_input('action') == 'paper')
+    {
+        $lang->load('paper');
+        // Do something, for example I'll create a page using the hello_world_template
+
+        // Add a breadcrumb
+        add_breadcrumb('Zeitungen', "misc.php?action=paper");
+
+
+        eval("\$page = \"".$templates->get("papermain")."\";");
+        output_page($page);
+    }
+
+//ZEITUNGSÜBERSICHT DIE SICH ERWEITERT
+    $query = $db->query("SELECT *
+    FROM ".TABLE_PREFIX."paper
+    ORDER BY paper ASC
+    ");
+
+    while($pap = $db->fetch_array($query)){
+        $paper = "";
+
+        $paper = $pap['paper'];
+        $zid = $pap['zid'];
+        $entry = "";
+
+        $entry_query = $db->query("SELECT *
+      FROM ".TABLE_PREFIX."paper_article
+      WHERE zid = '".$zid."'
+      ORDER BY articletitle ASC
+      ");
+
+        while($row = $db->fetch_array($entry_query)){
+            $altbg = alt_trow();
+            $link = $row['link'];
+            $linktitle = $row['linktitle'];
+
+            $entry .= "<tr><td class='$altbg' style='padding-left: 5px;'>&raquo; <a href='misc.php?article={$link}'>{$linktitle}</a> </td></tr>";
+        }  eval("\$paper_menu_paper .= \"".$templates->get("paper_menu_paper")."\";");
+    }
+
+    eval("\$paper_menu = \"".$templates->get("paper_menu")."\";");
+
+
+
+// In the body of your plugin
+function paper_misc()
+{
+    global $mybb, $templates, $lang, $header, $headerinclude, $footer, $page, $db, $papers, $article, $article_title, $options, $add_entry, $new_paper;
+    $lang->load('paper');
+    require_once MYBB_ROOT."inc/class_parser.php";;
+    $parser = new postParser;
+    // Do something, for example I'll create a page using the hello_world_template
+    $options = array(
+        "allow_html" => 1,
+        "allow_mycode" => 1,
+        "allow_smilies" => 1,
+        "allow_imgcode" => 1,
+        "filter_badwords" => 0,
+        "nl2br" => 1,
+        "allow_videocode" => 0
+    );
+	
