@@ -40,7 +40,7 @@ function zeitungenrpg_install()
 	`action` varchar(140) NOT NULL,
     `paper` varchar(500) CHARACTER SET utf8 NOT NULL,
 	`paperdesc` longtext CHARACTER SET utf8 NOT NULL,
-	`papercreator` int(10) NOT NULL,
+	`papercreator` int(10) UNSIGNED NOT NULL,	
     PRIMARY KEY (`zid`)
     ) ENGINE=MyISAM".$db->build_create_table_collation());
 	
@@ -579,7 +579,8 @@ global $db, $cache, $mybb, $templates, $theme, $header, $headerinclude, $footer,
 	$paperid = $mybb->input['paperid'];
 
     if($paperentry){
-		
+				
+		add_breadcrumb('Zeitungen', "misc.php?action=paper");
 		add_breadcrumb('Artikelübersicht', "misc.php?paperentry={$paper['paper']}&{$paper['zid']}");
 
 		$articlesql = $db->query("SELECT * 
@@ -612,16 +613,17 @@ global $db, $cache, $mybb, $templates, $theme, $header, $headerinclude, $footer,
 	
     if($articleentry){
 		
-		
+		add_breadcrumb('Zeitungen', "misc.php?action=paper");
 		add_breadcrumb('Artikel anzeigen', "misc.php?articleentry={$paper_article['aid']}");
 		
 		$articleview = "SELECT * 
-		FROM ".TABLE_PREFIX."paper_article
+		FROM ".TABLE_PREFIX."paper_article 
+		LEFT JOIN  ".TABLE_PREFIX."paper 
+		ON ".TABLE_PREFIX."paper.zid = ".TABLE_PREFIX."paper.zid
 		where aid = '".$articleid."'
 		";
 		$query = $db->query($articleview);
 		$article = $db->fetch_array($query);
-		
 				
         eval("\$page .= \"".$templates->get("paper_article_view")."\";");
         output_page($page);
@@ -637,6 +639,7 @@ global $db, $cache, $mybb, $templates, $theme, $header, $headerinclude, $footer,
              }   
     
             // Add a breadcrumb
+			add_breadcrumb('Zeitungen', "misc.php?action=paper");
             add_breadcrumb('Zeitung hinzufügen', "misc.php?action=add_paper");
 			
 			//ANSTELLE VON INSERT NEHMEN WIR DAS FÜR DAS FORMULAR
@@ -647,7 +650,8 @@ global $db, $cache, $mybb, $templates, $theme, $header, $headerinclude, $footer,
                     "paper" => $db->escape_string($_POST['paper']),
                     "paperdesc" => $db->escape_string($_POST['paperdesc']),
                     "action" => $db->escape_string($_POST['page']),
-					"zpicture" => $db->escape_string($_POST['zpicture'])
+					"zpicture" => $db->escape_string($_POST['zpicture']),
+					"papercreator" => (int) $mybb->user['uid']
                 );
 
                 $db->insert_query("paper", $sendnew_paper);
@@ -667,6 +671,7 @@ global $db, $cache, $mybb, $templates, $theme, $header, $headerinclude, $footer,
              }
     
             // Add a breadcrumb
+			add_breadcrumb('Zeitungen', "misc.php?action=paper");
             add_breadcrumb('Artikel hinzufügen', "misc.php?action=add_article");
 			
 			$paperrubrik_setting = $mybb->settings['zeitungenrpg_rubriken'];
@@ -693,6 +698,7 @@ global $db, $cache, $mybb, $templates, $theme, $header, $headerinclude, $footer,
 
                 $sendnew_article = array(
 					"zid" => (int)$_POST['paper'],
+					"articlecreator" => (int) $mybb->user['uid'],
                     "articletitle" => $db->escape_string($_POST['articletitle']),
                     "article" => $db->escape_string($_POST['article']),
 					"werbung" => $db->escape_string($_POST['werbung']),
@@ -714,6 +720,7 @@ global $db, $cache, $mybb, $templates, $theme, $header, $headerinclude, $footer,
 	//HIER KÖNNEN ARTIKEL EDITIERT WERDEN 	
 	if($mybb->get_input('action') == 'articleentry_edit') {
 		
+		add_breadcrumb('Zeitungen', "misc.php?action=paper");
 		add_breadcrumb('Artikel editieren', "misc.php?action=paperentry_edit");
 		
 		$aid = $mybb->input['edit'];
