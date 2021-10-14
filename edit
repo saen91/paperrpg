@@ -1,0 +1,128 @@
+EDIT TEMPLATE
+<head>
+<title>{$mybb->settings['bbname']} - Artikel bearbeiten</title>
+{$headerinclude}
+</head>
+<body>
+{$header}
+<table border="0" cellspacing="{$theme['borderwidth']}" cellpadding="{$theme['tablespace']}" class="tborder">
+<tr>
+<td class="thead"><strong>Artikel bearbeiten</strong></td>
+</tr>
+<tr>
+		<td class="trow1" align="center" valign="top" width="90%">
+			<form id="edit_article_entry" method="post" action="misc.php?action=articleentry_edit&articleid={$paper_article['aid']}">
+				<input type="hidden" name="article_entry" id="article_entry" value="{$aid}" class="textbox" />
+					<table width="90%">
+						<tr><td class="trow2"><strong>Zeitung auswählen</strong></td>
+				<td class="trow2"><select name="paper" required>
+					<option value="%">Zeitung wählen</option>
+					{$paper}
+					</select> 
+				</td></tr>
+				<tr><td class="trow2"><strong>Rubrik auswählen</strong></td>
+				<td class="trow2"><select name="zeitungenrpg_rubriken" required>
+					<option value="%">Rubrik wählen</option>
+					{$zeitungenrpg_rubriken}
+					</select> 
+				</td></tr>
+				<tr>
+					<td class="trow1"><strong>Artikeltitel</strong></td>
+					<td class="trow2"><input type="text" name="articletitle" id="articletitle" placeholder="Artikeltitel" class="textbox" required /> </td>
+				</tr>
+				<tr>
+					<td class="trow1"><strong>Artikel</strong></td>
+					<td class="trow2" colspan="2"><textarea class="textarea" name="article" id="article" rows="6" cols="30" style="width: 95%"></textarea></td>
+				</tr>
+				<tr>
+					<td class="trow1"><strong>Artikelbild</strong></td>
+					<td class="trow2" colspan="2"><input type="text" name="articlepicture" id="articlepicture" placeholder="Link für ein Artikelbild" class="textbox" required /></td>
+				</tr>
+				<tr>
+					<td class="trow1"><strong>Autor des Artikels</strong></td>
+					<td class="trow2" colspan="2"><input type="text" name="articleauthor" id="articleauthor" placeholder="Name des Autors" class="textbox" required /></td>
+				</tr>
+				<tr>
+					<td class="trow1"><strong>Artikeldatum</strong></td>
+					<td class="trow2" colspan="2"><input type="text" name="articledate" id="articledate" placeholder="Artikeldatum TT.MM.JJJJ" class="textbox" required /></td>
+				</tr>
+				<tr>
+					<td class="trow1"><strong>Werbung</strong> Gebe hier Werbung oder zusätzliche Informationen an wie bspw. Infos über die Person um die es geht.</td>
+					<td class="trow2" colspan="2"><textarea class="textarea" name="werbung" id="werbung" rows="6" cols="30" style="width: 95%"></textarea></td>
+				</tr>
+						<tr><td class="tcat" colspan="2" align="center"><input type="submit" name="editarticle" value="Artikel editieren" id="submit" class="button"></td></tr>
+					</table>
+			</form>
+		</td>
+		</tr>
+</table>
+</td>
+</tr>
+</table>
+{$footer}
+</body>
+</html>
+
+
+
+
+<?php
+
+
+
+EDIT PHP
+//HIER KÖNNEN ARTIKEL EDITIERT WERDEN 	
+	if($mybb->get_input('action') == 'articleentry_edit') {
+		
+			// Add a breadcrumb
+			add_breadcrumb('Zeitungen', "misc.php?action=paper");
+			add_breadcrumb('Artikel editieren', "misc.php?action=articleentry_edit");
+		
+			//Rubriken ausgeben
+			$paperrubrik_setting = $mybb->settings['zeitungenrpg_rubriken'];
+			$paper_rubriks = explode(", ", $paperrubrik_setting);
+			foreach ($paper_rubriks as $paper_rubrik){
+            $zeitungenrpg_rubriken .= "<option value='{$paper_rubrik}'>{$paper_rubrik}</option>";
+        	}
+		
+			//Artikel auslesen
+			$article_select = $db->query("SELECT *
+            from " . TABLE_PREFIX . "paper_article
+            where aid = '" . $aid . "'
+            ");
+
+			$article = $db->fetch_array($article_select);
+			$articletitle = $article['articletitel'];
+			$article = $article['article'];
+			$werbung = $article['werbung'];
+			$articlepicture = $article['articlepicture'];
+			$articleauthor = $article['articleauthor'];
+			$articledate = $article['articledate'];
+			$zeitungenrpg_rubriken = $article['zeitungenprg_rubriken'];
+		
+			
+		//ANSTELLE VON INSERT NEHMEN WIR DAS FÜR DAS FORMULAR
+		if($_POST['editarticle']){
+            $aid = $mybb->input['paper'];
+            $sendnew_article = array(
+                "zid" => (int)$_POST['paper'],
+					"articlecreator" => (int) $mybb->user['uid'],
+                    "articletitle" => $db->escape_string($_POST['articletitle']),
+                    "article" => $db->escape_string($_POST['article']),
+					"werbung" => $db->escape_string($_POST['werbung']),
+                    "articlepicture" => $db->escape_string($_POST['articlepicture']),
+					"articleauthor" => $db->escape_string($_POST['articleauthor']),
+					"articledate" => $db->escape_string($_POST['articledate']),
+					"zeitungenrpg_rubriken" => $db->escape_string($_POST['zeitungenrpg_rubriken'])
+            );
+
+            $db->update_query("paper_article", $sendnew_article, "aid = '".$aid."'");
+            redirect("misc.php?action=paper");
+        }
+
+		
+		
+        eval("\$page = \"".$templates->get("paper_article_edit")."\";");
+        output_page($page);
+
+    }
