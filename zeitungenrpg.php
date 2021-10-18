@@ -1,49 +1,46 @@
 <?php
-
 /**
  * Zeitungsplugin
- *   
+ *
  */
 //error_reporting ( -1 );
 //ini_set ( 'display_errors', true );
-
 // Disallow direct access to this file for security reasons
-if (!defined("IN_MYBB")) {
-  die("Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.");
+if (!defined("IN_MYBB"))
+{
+	die("Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.");
 }
 
 //HOOK HAUPTSEITE
 $plugins->add_hook('misc_start', 'paper_misc');
 
-
 function zeitungenrpg_info()
 {
-  return array(
-    "name" => "Zeitungen RPG",
-    "description" => "Ein Plugin mit welchem Zeitungen und Artikel erstellt werden können",
-    "author" => "saen",
-	"authorsite" => "https://github.com/saen91",
-    "version" => "1.0",
-    "compatibility" => "18*"
-  );
+	return array(
+		'name' => "Zeitungen RPG",
+		'description' => "Ein Plugin mit welchem Zeitungen und Artikel erstellt werden können",
+		'author' => "saen",
+		'authorsite' => "https://github.com/saen91",
+		'version' => "1.0",
+		'compatibility' => "18*"
+	);
 }
-
 
 function zeitungenrpg_install()
 {
-	global $db, $mybb; 
-	
+	global $db, $mybb;
+
 	//LEGE TABELLE AN Zeitung
 	$db->write_query("CREATE TABLE `" . TABLE_PREFIX . "paper` (
 	`zid` int(11)  NOT NULL auto_increment,
 	`zpicture` varchar (255) CHARACTER SET utf8 NOT NULL,
 	`action` varchar(140) NOT NULL,
-    `paper` varchar(500) CHARACTER SET utf8 NOT NULL,
+	`paper` varchar(500) CHARACTER SET utf8 NOT NULL,
 	`paperdesc` longtext CHARACTER SET utf8 NOT NULL,
 	`papercreator` int(10) UNSIGNED NOT NULL,	
-    PRIMARY KEY (`zid`)
-    ) ENGINE=MyISAM".$db->build_create_table_collation());
-	
+	PRIMARY KEY (`zid`)
+	) ENGINE=MyISAM" . $db->build_create_table_collation());
+
 	//LEGE TABELLE AN Artikel
 	$db->write_query("CREATE TABLE `" . TABLE_PREFIX . "paper_article` (
 	`aid` int(11) NOT NULL  AUTO_INCREMENT,	
@@ -58,43 +55,79 @@ function zeitungenrpg_install()
 	`articlecreator` int(10) UNSIGNED NOT NULL,
 	PRIMARY KEY (`aid`)
 	) ENGINE=MyISAM CHARACTER SET utf8 COLLATE utf8_general_ci;");
-	
-	// EINSTELLUNGEN 
-	$setting_group = [
-		'name' => 'zeitungenrpg',
-		'title' => 'Zeitungen, Arikel für RPG',
-		'description' => 'Zeitungen und Arikel für RPG Einstellungen',
-		'disporder' => 1,
-		'isdefault' => 0
-	];
-	
+
+	//LEGE TABELLE AN Images hochladen
+	$db->write_query("CREATE TABLE `" . TABLE_PREFIX . "paper_imgs` (
+	`paper_imgId` int(11) NOT NULL AUTO_INCREMENT,
+	`paper_filesize` int(11) NOT NULL,
+	`paper_filename` varchar(200) NOT NULL,
+	`paper_width` int(11) NOT NULL,
+	`paper_height` int(11) NOT NULL,
+	`paper_uid` int(11) NOT NULL,
+	`paper_aid` int(11) NOT NULL,
+	`paper_type` varchar(11) NOT NULL,
+	PRIMARY KEY (`paper_imgId`)
+	) ENGINE=MyISAM CHARACTER SET utf8 COLLATE utf8_general_ci;");
+
+	if (!file_exists(MYBB_ROOT . 'uploads/paper'))
+	{
+		mkdir(MYBB_ROOT . 'uploads/paper', 0755, true);
+	}
+
+	// EINSTELLUNGEN
+	$setting_group = ['name' => 'zeitungenrpg', 'title' => 'Zeitungen, Arikel für RPG', 'description' => 'Zeitungen und Arikel für RPG Einstellungen', 'disporder' => 1, 'isdefault' => 0];
+
 	$gid = $db->insert_query("settinggroups", $setting_group);
-	
-	$setting_array = [
-		'zeitungenrpg_allow_groups_articel' => [
-			'title' => 'Erlaubte Gruppen: Artikel',
-			'description' => 'Welche Gruppen dürfen Artikel einreichen?',
-			'optionscode' => 'groupselect',
-            'value' => '2,4',
-			'disporder' => 1
-        ],
-        'zeitungenrpg_allow_groups_paper' => [
-			'title' => 'Erlaubte Gruppen: Zeitungen',
-			'description' => 'Welche Gruppen dürfen Zeitungen eintragen?',
-			'optionscode' => 'groupselect',
-            'value' => '2,4',
-			'disporder' => 1
-		],
-		'zeitungenrpg_rubriken' => [
-			'title' => 'Welche Rubriken gibt es?',
-			'description' => 'Welche Rubriken sollen beim erfassen von Artikeln auswählbar sein?',
-			'optionscode' => 'text',
-            'value' => 'Politik, Unterhaltung, Sport', //Kann angepasst werden 
-			'disporder' => 1
-		]
-    ];
-	
-	foreach($setting_array as $name => $setting)
+
+	$setting_array = ['zeitungenrpg_allow_groups_articel' => array(
+		'title' => 'Erlaubte Gruppen: Artikel',
+		'description' => 'Welche Gruppen dürfen Artikel einreichen?',
+		'optionscode' => 'groupselect',
+		'value' => '2,4',
+		'disporder' => 1
+	) , 'zeitungenrpg_allow_groups_paper' => array(
+		'title' => 'Erlaubte Gruppen: Zeitungen',
+		'description' => 'Welche Gruppen dürfen Zeitungen eintragen?',
+		'optionscode' => 'groupselect',
+		'value' => '2,4',
+		'disporder' => 2
+	) , 'zeitungenrpg_rubriken' => array(
+		'title' => 'Welche Rubriken gibt es?',
+		'description' => 'Welche Rubriken sollen beim erfassen von Artikeln auswählbar sein?',
+		'optionscode' => 'text',
+		'value' => 'Politik, Unterhaltung, Sport', //Kann angepasst werden
+		'disporder' => 3
+	) , 'zeitungenrpg_uploadImg' => array(
+		'title' => 'Artikel: Bilder hochladen',
+		'description' => 'Dürfen Mitglieder Bilder für die Artikel hochladen?',
+		'optionscode' => 'yesno',
+		'value' => '1', // Default
+		'disporder' => 4
+	) ,
+
+	'zeitungenrpg_uploadImgSize' => array(
+		'title' => 'Artikel: Dateigröße',
+		'description' => 'Gebe hier die Dateigröße von den Bildern an, die User hochladen können.',
+		'optionscode' => 'text',
+		'value' => '2000000', // Default
+		'disporder' => 5
+	) , 'zeitungenrpg_uploadImgWidth' => array(
+		'title' => 'Artikel: Breite der Bilder',
+		'description' => 'Gebe hier die Breite der Bilder an.',
+		'optionscode' => 'text',
+		'value' => '400', // Default
+		'disporder' => 6
+	) ,
+
+	'zeitungenrpg_uploadImgHeight' => array(
+		'title' => 'Artikel: Höhe der Bilder',
+		'description' => 'Gebe hier die Höhe der Bilder an.',
+		'optionscode' => 'text',
+		'value' => '200', // Default
+		'disporder' => 7
+	) ];
+
+	foreach ($setting_array as $name => $setting)
 	{
 		$setting['name'] = $name;
 		$setting['gid'] = $gid;
@@ -127,7 +160,11 @@ function zeitungenrpg_install()
 	<tr>
 		<td class="thead"><strong>Zeitungsübersicht</strong></td>
 	</tr>
-	{$paper_view}
+	<tr>
+		<td>
+		{$paper_view}
+		</td>
+	</tr>
 	</table>
 </td>
 </tr>
@@ -137,31 +174,40 @@ function zeitungenrpg_install()
 </table>
 {$footer}
 </body>
-</html>'),
+</html>') ,
 		'sid' => '-1',
 		'version' => '',
 		'dateline' => TIME_NOW
-		);
-		$db->insert_query("templates", $insert_array);
-	
-	
+	);
+	$db->insert_query("templates", $insert_array);
+
 	$insert_array = array(
-        'title'        => 'paper_viewpaper',
-        'template'    => $db->escape_string('<tr>
-		<td class="trow1" align="center" valign="top"><a href="misc.php?paperentry={$paper[\'action\']}&paperid={$paper[\'zid\']}">{$paper[\'paper\']}</a></td>
-	</tr>
-	<tr>
-		<td align="justify">{$paper[\'paperdesc\']}</td>
-	</tr>'),
-        'sid'        => '-1',
-        'version'    => '',
-        'dateline'    => TIME_NOW
-    );
-    $db->insert_query("templates", $insert_array);
-	
+		'title' => 'paper_viewpaper',
+		'template' => $db->escape_string('<div id="paperback">
+	<table width="100%">
+		<tr>
+			<td align="center" colspan="2" valign="top">
+				<div class="papertitel"><a href="misc.php?paperentry={$paper[\'action\']}&paperid={$paper[\'zid\']}">{$paper[\'paper\']}</a></div>
+			</td>
+		</tr>
+		<tr>
+			<td align="left" valign="top" width="100px"><img src="{$paper[\'zpicture\']}" class="paperimg">               
+			</td>
+			<td align="left" valign="top">
+				<div class="paperdesc firefoxscroll chromescroll">{$paper[\'paperdesc\']}</div>
+			</td>
+		</tr>
+	</table>            
+</div>') ,
+		'sid' => '-1',
+		'version' => '',
+		'dateline' => TIME_NOW
+	);
+	$db->insert_query("templates", $insert_array);
+
 	$insert_array = array(
-        'title'        => 'paper_article_overview',
-        'template'    => $db->escape_string('<html>
+		'title' => 'paper_article_overview',
+		'template' => $db->escape_string('<html>
 <head>
 <title>{$mybb->settings[\'bbname\']} - Artikelübersicht</title>
 {$headerinclude}
@@ -170,7 +216,7 @@ function zeitungenrpg_install()
 {$header}
 	<table border="0" cellspacing="{$theme[\'borderwidth\']}" cellpadding="{$theme[\'tablespace\']}" class="tborder">
 	<tr>
-		<td class="thead" colspan="4"><strong>Artikelübersicht </strong></td>
+		<td class="thead" colspan="5"><strong>Artikelübersicht </strong></td>
 	</tr>
 	<tr>
 		<td width="20%" align="center" class="trow1">Rubrik</td>
@@ -183,42 +229,40 @@ function zeitungenrpg_install()
 	</table>
 {$footer}
 </body>
-</html>'),
-        'sid'        => '-1',
-        'version'    => '',
-        'dateline'    => TIME_NOW
-    );
-    $db->insert_query("templates", $insert_array);
-	
+</html>') ,
+		'sid' => '-1',
+		'version' => '',
+		'dateline' => TIME_NOW
+	);
+	$db->insert_query("templates", $insert_array);
+
 	$insert_array = array(
-        'title'        => 'paper_article_overview_bit',
-        'template'    => $db->escape_string('<tr>
+		'title' => 'paper_article_overview_bit',
+		'template' => $db->escape_string('<tr>
 		<td>{$paper_article[\'zeitungenrpg_rubriken\']}</td>
 		<td><a href="misc.php?articleentry={$paper_article[\'articletitle\']}&articleid={$paper_article[\'aid\']}">{$paper_article[\'articletitle\']}</a></td>
 		<td>{$paper_article[\'articleauthor\']}</td>
-		<td>{$paper_article[\'articledate\']}</td>
+		<td>{$articledate}</td>
 		<td>{$article_options}</td>
-</tr>'),
-        'sid'        => '-1',
-        'version'    => '',
-        'dateline'    => TIME_NOW
-    );
-    $db->insert_query("templates", $insert_array);
-	
+</tr>') ,
+		'sid' => '-1',
+		'version' => '',
+		'dateline' => TIME_NOW
+	);
+	$db->insert_query("templates", $insert_array);
+
 	$insert_array = array(
-        'title'        => 'paper_add_paper',
-        'template'    => $db->escape_string('<a href="misc.php?action=add_paper">Zeitung hinzufügen</a>'),
-        'sid'        => '-1',
-        'version'    => '',
-        'dateline'    => TIME_NOW
-    );
-    $db->insert_query("templates", $insert_array);
-	
-	
-	
+		'title' => 'paper_add_paper',
+		'template' => $db->escape_string('<a href="misc.php?action=add_paper">Zeitung hinzufügen</a>') ,
+		'sid' => '-1',
+		'version' => '',
+		'dateline' => TIME_NOW
+	);
+	$db->insert_query("templates", $insert_array);
+
 	$insert_array = array(
-        'title'        => 'paper_addpaper_formular',
-        'template'    => $db->escape_string('<html>
+		'title' => 'paper_addpaper_formular',
+		'template' => $db->escape_string('<html>
 <head>
 <title>{$mybb->settings[\'bbname\']} - Zeitung hinzufügen</title>
 {$headerinclude}
@@ -239,8 +283,8 @@ function zeitungenrpg_install()
 					<td class="trow2"><input type="text" name="paper" id="paper" placeholder="Zeitungsname" class="textbox" required /> </td>
 				</tr>
 				<tr>
-					<td class="trow1"><strong>Beschreibung der Zeitung</strong><smalltext><br>Absätze sind immer mit <*br> (ohne Sternchen) darzustellen.</smalltext> </td>
-					<td class="trow2" colspan="2"><textarea class="textarea" name="paperdesc" id="paperdesc" rows="6" cols="30" style="width: 95%"></textarea></td>
+					<td class="trow1"><strong>Beschreibung der Zeitung</strong><smalltext></td>
+					<td class="trow2" colspan="2"><textarea class="textarea" name="paperdesc" id="paperdesc" placeholder="Absätze sind immer mit <*br> (ohne Sternchen) darzustellen." rows="6" cols="30" style="width: 95%"></textarea></td>
 				</tr>
 				<tr>
 					<td class="trow1"><strong>Zeitungslink</strong></td>
@@ -254,17 +298,16 @@ function zeitungenrpg_install()
 	</table>
 {$footer}
 </body>
-</html>'),
-        'sid'        => '-1',
-        'version'    => '',
-        'dateline'    => TIME_NOW
-    );
-    $db->insert_query("templates", $insert_array);
-	
-	
+</html>') ,
+		'sid' => '-1',
+		'version' => '',
+		'dateline' => TIME_NOW
+	);
+	$db->insert_query("templates", $insert_array);
+
 	$insert_array = array(
-        'title'        => 'paper_article_view',
-        'template'    => $db->escape_string('<html>
+		'title' => 'paper_article_view',
+		'template' => $db->escape_string('<html>
 <head>
 <title>{$mybb->settings[\'bbname\']} -{$article[\'articletitle\']} </title>
 {$headerinclude}
@@ -276,7 +319,7 @@ function zeitungenrpg_install()
 	<tr><td class="thead"><strong>{$article[\'articletitle\']}</strong></td></tr>
 	<tr><td>
 		<div id="ridenewspaper">
-			<div id="rnh1">{$paper[\'paper\']}</div>
+			<div id="rnh1">{$article[\'paper\']}</div>
 				<div id="rnflex1">
 					<div id="rnflex2">
 						<div id="rnflex3">
@@ -284,7 +327,7 @@ function zeitungenrpg_install()
 								{$article[\'articletitle\']}
 							</div>
 							<div id="rnflex5">
-								<div id="rndatum">{$article[\'articledate\']}</div>
+								<div id="rndatum">{$articledate}</div>
 								<div id="rndreieck"></div>
 							</div>
 						</div>
@@ -296,21 +339,16 @@ function zeitungenrpg_install()
 							{$article[\'article\']}
 							<div id="rnauthor">{$article[\'articleauthor\']}
 							</div>
-							<br><br>
-							<img src="{$article[\'articlepicture\']}" id="rnimg">
+							{$article[\'articlepicture\']}
 						</div>
-						<div id="rnfooter">
-							<div id="rnpfeil">&#x2192;</div> {$article[\'werbung\']}
-
-						</div>
-    				</div>
+						{$article[\'werbung\']}
+					</div>
 
 					<div id="rnflex6">
-						<div style="background: url(\'https://images.unsplash.com/photo-1584441405886-bc91be61e56a?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=430&q=80\'); background-position: center;" id="rnlogo"></div>
-						<div id="rnsidetitle">über {$paper[\'paper\']}</div>
-						{$paper[\'paperdesc\']}
-    
-    				</div>
+						<div style="background: url(\'{$article[\'zpicture\']}\'); background-position: center;" id="rnlogo"></div>
+						<div id="rnsidetitle">über {$article[\'paper\']}</div>
+						{$article[\'paperdesc\']}
+					</div>
 			</div>
 		</div>
 		</td>
@@ -318,27 +356,103 @@ function zeitungenrpg_install()
 	</table>
 {$footer}
 </body>
-</html>'),
-        'sid'        => '-1',
-        'version'    => '',
-        'dateline'    => TIME_NOW
-    );
-    $db->insert_query("templates", $insert_array);
-		
-	
+</html>') ,
+		'sid' => '-1',
+		'version' => '',
+		'dateline' => TIME_NOW
+	);
+	$db->insert_query("templates", $insert_array);
+
 	$insert_array = array(
-        'title'        => 'paper_add_article',
-        'template'    => $db->escape_string('<a href="misc.php?action=add_article">Artikel hinzufügen</a>'),
-        'sid'        => '-1',
-        'version'    => '',
-        'dateline'    => TIME_NOW
-    );
-    $db->insert_query("templates", $insert_array);
-	
-	
+		'title' => 'paper_add_article',
+		'template' => $db->escape_string('<a href="misc.php?action=add_article">Artikel hinzufügen</a>') ,
+		'sid' => '-1',
+		'version' => '',
+		'dateline' => TIME_NOW
+	);
+	$db->insert_query("templates", $insert_array);
+
 	$insert_array = array(
-        'title'        => 'paper_addarticle_formular',
-        'template'    => $db->escape_string('<html>
+		'title' => 'paper_article_edit',
+		'template' => $db->escape_string('<head>
+<title>{$mybb->settings[\'bbname\']} - Artikel bearbeiten</title>
+{$headerinclude}
+</head>
+<body>
+{$header}
+<table border="0" cellspacing="{$theme[\'borderwidth\']}" cellpadding="{$theme[\'tablespace\']}" class="tborder">
+<tr>
+<td class="thead"><strong>Artikel bearbeiten</strong></td>
+</tr>
+<tr>
+		<td class="trow1" align="center" valign="top" width="90%">
+			<form id="edit_article_entry" method="post" action="misc.php?action=articleentry_edit&articleid={$paper_article[\'aid\']}">
+				<input type="hidden" name="article_entry" id="article_entry" value="{$aid}" class="textbox" />
+					<table width="90%">
+						<tr><td class="trow2"><strong>Zeitung auswählen</strong></td>
+				<td class="trow2"><select name="paper" required>
+					<option value="%" disabled>Zeitung wählen</option>
+					{$paper}
+					</select> 
+				</td></tr>
+				<tr><td class="trow2"><strong>Rubrik auswählen</strong></td>
+				<td class="trow2"><select name="zeitungenrpg_rubriken" required>
+					<option value="%" disabled>Rubrik wählen</option>
+					{$zeitungenrpg_rubriken}
+					</select> 
+				</td></tr>
+				<tr>
+					<td class="trow1"><strong>Artikeltitel</strong></td>
+					<td class="trow2"><input type="text" name="articletitle" id="articletitle" value="$articletitle" class="textbox" required /></td>
+				</tr>
+				<tr>
+					<td class="trow1"><strong>Artikel</strong></td>
+					<td class="trow2" colspan="2"><textarea class="textarea" name="article" id="article" rows="6" cols="30" style="width: 95%">{$articletext}</textarea></td>
+				</tr>
+				<tr>
+					<td class="trow1"><strong>Artikelbild</strong></td>
+					<td class="trow2" colspan="2"><input type="text" name="articlepicture" id="articlepicture" value="$articlepicture" class="textbox" required /></td>
+				</tr>
+				<tr>
+					<td class="trow1"><strong>Autor des Artikels</strong></td>
+					<td class="trow2" colspan="2"><input type="text" name="articleauthor" id="articleauthor" value="$articleauthor" class="textbox" required /></td>
+				</tr>
+				<tr>
+					<td class="trow1"><strong>Artikeldatum</strong></td>
+					<td class="trow2" colspan="2"><input type="date" name="articledate" id="articledate" value="$articledate" class="textbox" required /></td>
+				</tr>
+				<tr>
+					<td class="trow1"><strong>Werbung</strong></td>
+					<td class="trow2" colspan="2">						
+						<textarea class="textarea" name="werbung" id="werbung" rows="6" cols="30" style="width: 95%">{$werbung}</textarea>
+					</td>
+				</tr>
+						<tr><td class="tcat" colspan="2" align="center">
+							<input type="submit" name="editarticle" value="Artikel editieren" id="submit" class="button">
+							
+							<input type="hidden" name="articleid" value="$articleid">
+							<input type="hidden" name="my_post_key" value="{$mybb->post_code}" />
+						</td></tr>
+					</table>
+			</form>
+		</td>
+		</tr>
+</table>
+</td>
+</tr>
+</table>
+{$footer}
+</body>
+</html>') ,
+		'sid' => '-1',
+		'version' => '',
+		'dateline' => TIME_NOW
+	);
+	$db->insert_query("templates", $insert_array);
+
+	$insert_array = array(
+		'title' => 'paper_addarticle_formular',
+		'template' => $db->escape_string('<html>
 <head>
 <title>{$mybb->settings[\'bbname\']} - Artikel hinzufügen</title>
 {$headerinclude}
@@ -356,13 +470,13 @@ function zeitungenrpg_install()
 				<tr><td class="thead" colspan="2"><strong>Artikel hinzufügen</strong></td></tr>
 				<tr><td class="trow2"><strong>Zeitung auswählen</strong></td>
 				<td class="trow2"><select name="paper" required>
-					<option value="%">Zeitung wählen</option>
+					<option value="%" disabled>Zeitung wählen</option>
 					{$paper}
 					</select> 
 				</td></tr>
 				<tr><td class="trow2"><strong>Rubrik auswählen</strong></td>
 				<td class="trow2"><select name="zeitungenrpg_rubriken" required>
-					<option value="%">Rubrik wählen</option>
+					<option value="%" disabled>Rubrik wählen</option>
 					{$zeitungenrpg_rubriken}
 					</select> 
 				</td></tr>
@@ -379,16 +493,20 @@ function zeitungenrpg_install()
 					<td class="trow2" colspan="2"><input type="text" name="articlepicture" id="articlepicture" placeholder="Link für ein Artikelbild" class="textbox" required /></td>
 				</tr>
 				<tr>
+					<td class="trow1"><strong>Artikelbild</strong></td>
+					<td class="trow2" colspan="2"><input type="file" name="uploadImg" size="60" maxlength="255"></td>
+				</tr>
+				<tr>
 					<td class="trow1"><strong>Autor des Artikels</strong></td>
 					<td class="trow2" colspan="2"><input type="text" name="articleauthor" id="articleauthor" placeholder="Name des Autors" class="textbox" required /></td>
 				</tr>
 				<tr>
 					<td class="trow1"><strong>Artikeldatum</strong></td>
-					<td class="trow2" colspan="2"><input type="text" name="articledate" id="articledate" placeholder="Artikeldatum TT.MM.JJJJ" class="textbox" required /></td>
-				</tr>
+					<td class="trow2" colspan="2"><input type="date" name="articledate" id="articledate" class="textbox" required /></td>
+				</tr>			
 				<tr>
-					<td class="trow1"><strong>Werbung</strong> Gebe hier Werbung oder zusätzliche Informationen an wie bspw. Infos über die Person um die es geht.</td>
-					<td class="trow2" colspan="2"><textarea class="textarea" name="werbung" id="werbung" rows="6" cols="30" style="width: 95%"></textarea></td>
+					<td class="trow1"><strong>Werbung</strong></td>
+					<td class="trow2" colspan="2"><textarea class="textarea" name="werbung" id="werbung"  placeholder="Gebe hier Werbung oder zusätzliche Informationen an wie bspw. Infos über die Person um die es geht." rows="6" cols="30" style="width: 95%"></textarea></td>
 				</tr>
 				<tr><td class="tcat" colspan="2" align="center"><input type="submit" name="send_article" id="submit" class="button"></td></tr>
 			</table>
@@ -398,33 +516,88 @@ function zeitungenrpg_install()
 	</table>
 {$footer}
 </body>
-</html>'),
-        'sid'        => '-1',
-        'version'    => '',
-        'dateline'    => TIME_NOW
-    );
-    $db->insert_query("templates", $insert_array);
-	
+</html>') ,
+		'sid' => '-1',
+		'version' => '',
+		'dateline' => TIME_NOW
+	);
+	$db->insert_query("templates", $insert_array);
+
+	$insert_array = array(
+		'title' => 'paper_edit',
+		'template' => $db->escape_string('<head>
+<title>{$mybb->settings[\'bbname\']} - Zeitung bearbeiten</title>
+{$headerinclude}
+</head>
+<body>
+{$header}
+<table border="0" cellspacing="{$theme[\'borderwidth\']}" cellpadding="{$theme[\'tablespace\']}" class="tborder">
+<tr>
+<td class="thead"><strong>Zeitung bearbeiten</strong></td>
+</tr>
+<tr>
+		<td class="trow1" align="center" valign="top" width="90%">
+			<form id="edit_paper" method="post" action="misc.php?action=paper_edit&paperid={$paperrow[\'zid\']}">
+				<input type="hidden" name="paper" id="paper" value="{$zid}" class="textbox" />
+				<table width="90%">
+				<tr><td class="thead" colspan="2"><strong>Zeitung hinzufügen</strong></td></tr>
+				<tr>
+					<td class="trow1"><strong>Zeitungsname</strong></td>
+					<td class="trow2"><input type="text" name="paper" id="paper" value="$paper" class="textbox" required /> </td>
+				</tr>
+				<tr>
+					<td class="trow1"><strong>Beschreibung der Zeitung</strong><smalltext></td>
+					<td class="trow2" colspan="2"><textarea class="textarea" name="paperdesc" id="paperdesc" rows="6" cols="30" style="width: 95%">{$paperdesc}</textarea></td>
+				</tr>
+				<tr>
+					<td class="trow1"><strong>Zeitungslink</strong></td>
+					<td class="trow2" colspan="2"><input type="text" name="paperaction" id="paperaction" value="$paperaction" class="textbox" required /></td>
+				</tr>
+				<tr>
+					<td class="tcat" colspan="2" align="center">
+						<input type="submit" name="editpaper" value="Zeitung editieren" id="submit" class="button">
+						
+						<input type="hidden" name="paperid" value="$paperid">
+						<input type="hidden" name="my_post_key" value="{$mybb->post_code}" />
+					</td>
+				</tr>				
+			</table>
+			</form>
+		</td>
+		</tr>
+</table>
+</td>
+</tr>
+</table>
+{$footer}
+</body>
+</html>') ,
+		'sid' => '-1',
+		'version' => '',
+		'dateline' => TIME_NOW
+	);
+	$db->insert_query("templates", $insert_array);
+
 	//CSS eingeben
-	$css = array (
+	$css = array(
 		'name' => 'paperplugin.css',
 		'tid' => 1,
 		'attachedto' => '',
-		"stylesheet" =>	'
+		"stylesheet" => '
 .parentpaper {
-    color: #000;
-    margin: 20px 10px;
-    display: flex;
-    text-align: justify;
-    justify-content: space-between;
+	color: #000;
+	margin: 20px 10px;
+	display: flex;
+	text-align: justify;
+	justify-content: space-between;
 	width: 80%;
 }
 
 .parentpaper > div {
 	width: 50%;
 	color: #000;
-    margin: 20px 10px;
-    justify-content: space-between;
+	margin: 20px 10px;
+	justify-content: space-between;
 	text-align:center;
 	background: #0072bf;
 	padding: 5px;
@@ -433,6 +606,22 @@ function zeitungenrpg_install()
 .parentpaper > div a{
 	color: #fff !important;
 }
+
+/*Container Zeitungen*/
+#paperback {width: 33%; height: 180px; float: left; margin-bottom: 20px; background:#dadada;margin-left: 2px;}
+/*Zeitungsname Hauptseite*/
+#paperback .papertitel { font-family: prata, serif; font-size: 30px;}
+/*Zeitungsbild Hauptseite*/
+#paperback .paperimg {width: 100px; height: 100px; margin: 0 auto; margin-bottom: 5px; border: 10px solid rgba(255,255,255,0.5);background-clip: padding-box; } 
+/*Zeitungsbeschreibung Hauptseite*/
+#paperback .paperdesc { line-height: 18px;  color: #000;  font-family: Verdana, sans-serif;  font-size: 11px;  text-align: justify; padding:0px 6px;max-height:100px;margin-right: 5px;}
+/*Scrollbalken*/
+#paperback .firefoxscroll {scrollbar-width: thin; scrollbar-color: #383836 #dadada ;}
+#paperback .chromescroll {overflow-y: scroll;	padding: 4px;}
+#paperback .chromescroll::-webkit-scrollbar {width: 4px;}
+#paperback .chromescroll::-webkit-scrollbar-track {background-color: #dadada;}
+#paperback .chromescroll::-webkit-scrollbar-thumb {background-color: #383836;}
+
 
 
 /*Container Zeitungsartikel*/
@@ -474,332 +663,650 @@ function zeitungenrpg_install()
 #ridenewspaper #rnfooter { margin-top: 10px; padding-top: 10px; border-top: solid 1px #dcdcdc; line-height: 17px; color: #000; font-family: Verdana, sans-serif; font-size: 10px; text-align: justify; }
 #ridenewspaper #rnpfeil { float: left; margin: 0px 5px 0px 0px; font-size: 20px; font-weight: bold; } ',
 		'cachefile' => 'paperplugin.css',
-		'lastmodified' => time ()
+		'lastmodified' => time()
 	);
-	require_once MYBB_ADMIN_DIR."inc/functions_themes.php";
+	require_once MYBB_ADMIN_DIR . "inc/functions_themes.php";
 
 	$sid = $db->insert_query("themestylesheets", $css);
-	$db->update_query("themestylesheets", array("cachefile" => "css.php?stylesheet=".$sid), "sid = '".$sid."'", 1);
-	
+	$db->update_query("themestylesheets", array(
+		"cachefile" => "css.php?stylesheet=" . $sid
+	) , "sid = '" . $sid . "'", 1);
+
 	$tids = $db->simple_select("themes", "tid");
-	while($theme = $db->fetch_array($tids)) {
+	while ($theme = $db->fetch_array($tids))
+	{
 		update_theme_stylesheet_list($theme['tid']);
 	}
-	
-	
+
 	rebuild_settings();
-	
+
 }
 
 //INSTALLIEREN VOM PLUGIN
 function zeitungenrpg_is_installed()
 {
-  global $db;
-  if($db->table_exists("paper_article"))
-    {
-        return true;
-    }
-    return false;
+	global $db;
+	if ($db->table_exists("paper_article"))
+	{
+		return true;
+	}
+	return false;
 }
 
 //DEINSTALLIEREN VOM PLUGIN
 function zeitungenrpg_uninstall()
 {
 	global $db;
-	
-    if($db->table_exists("paper"))
-    {
-        $db->drop_table("paper");
-    }
 
-    if($db->table_exists("paper_article"))
-    {
-        $db->drop_table("paper_article");
-    }
+	if ($db->table_exists("paper"))
+	{
+		$db->drop_table("paper");
+	}
 
-    $db->query("DELETE FROM ".TABLE_PREFIX."settinggroups WHERE name='zeitungenrpg'");
-    $db->query("DELETE FROM ".TABLE_PREFIX."settings WHERE name='zeitungenrpg_allow_groups_articel'");
-	$db->query("DELETE FROM ".TABLE_PREFIX."settings WHERE name='zeitungenrpg_allow_groups_paper'");
-	$db->query("DELETE FROM ".TABLE_PREFIX."settings WHERE name='zeitungenrpg_rubriken'");
+	if ($db->table_exists("paper_article"))
+	{
+		$db->drop_table("paper_article");
+	}
 
-    $db->delete_query("templates", "title LIKE '%paper%'");
-    rebuild_settings();
+	if ($db->table_exists("paper_imgs"))
+	{
+		$db->drop_table("paper_imgs");
+	}
+
+	$db->query("DELETE FROM " . TABLE_PREFIX . "settinggroups WHERE name='zeitungenrpg'");
+	$db->query("DELETE FROM " . TABLE_PREFIX . "settings WHERE name='zeitungenrpg_allow_groups_articel'");
+	$db->query("DELETE FROM " . TABLE_PREFIX . "settings WHERE name='zeitungenrpg_allow_groups_paper'");
+	$db->query("DELETE FROM " . TABLE_PREFIX . "settings WHERE name='zeitungenrpg_rubriken'");
+	$db->query("DELETE FROM " . TABLE_PREFIX . "settings WHERE name='zeitungenrpg_uploadImg'");
+	$db->query("DELETE FROM " . TABLE_PREFIX . "settings WHERE name='zeitungenrpg_uploadImgSize'");
+	$db->query("DELETE FROM " . TABLE_PREFIX . "settings WHERE name='zeitungenrpg_uploadImgWidth'");
+	$db->query("DELETE FROM " . TABLE_PREFIX . "settings WHERE name='zeitungenrpg_uploadImgHeight'");
+
+	$db->delete_query("templates", "title LIKE '%paper%'");
+	rebuild_settings();
 }
 
 //AKTIVIEREN VOM PLUGIN
 function zeitungenrpg_activate()
 {
 	global $db, $cache;
-	require MYBB_ROOT."/inc/adminfunctions_templates.php";
-    
-    
+	require MYBB_ROOT . "/inc/adminfunctions_templates.php";
+
 }
 
 //DEAKTIVIEREN VOM PLUGIN
 function zeitungenrpg_deactivate()
 {
 	global $db, $cache;
-	require_once MYBB_ADMIN_DIR."inc/functions_themes.php";
-	
-	
+	require_once MYBB_ADMIN_DIR . "inc/functions_themes.php";
+
 	// STYLESHEET ENTFERNEN
-    $db->delete_query("themestylesheets", "name = 'paperplugin.css'");
-    $query = $db->simple_select("themes", "tid");
-    while($theme = $db->fetch_array($query)) {
-        update_theme_stylesheet_list($theme['tid']);    }
+	$db->delete_query("themestylesheets", "name = 'paperplugin.css'");
+	$query = $db->simple_select("themes", "tid");
+	while ($theme = $db->fetch_array($query))
+	{
+		update_theme_stylesheet_list($theme['tid']);
+	}
 }
 
+/** **
+ * Upload of images
+ * @param int $id to which id of Post or answer
+ * @param string $type post or answer
+ ** **
+ */
+function uploadImg($id, $type)
+{
+	global $db, $mybb, $lang;
 
+	$uploadImgWidth = intval($mybb->settings['zeitungenrpg_uploadImgWidth']);
+	$uploadImgHeight = intval($mybb->settings['zeitungenrpg_uploadImgHeight']);
+	$maxfilesize = intval($mybb->settings['zeitungenrpg_uploadImgSize']);
+	$fail = false;
+	$sizes = getimagesize($_FILES['uploadImg']['tmp_name']);
 
-function paper_misc () {
-global $db, $cache, $mybb, $templates, $theme, $header, $headerinclude, $footer, $page, $paper, $zeitungenrpg_rubriken ;
+	$imgpath = "uploads/paper/";
+	if (!is_writable('uploads/paper/'))
+	{
+		echo "<script>alert('Der Pfad ist nicht beschreibar.')</script>";
+	}
 
-	//HAUPTSEITE ERSTELLEN
-	if($mybb->input['action'] == "paper")
-    {
-        // Add a breadcrumb
-        add_breadcrumb('Zeitungen', "misc.php?action=paper");
-		
-		eval("\$add_paper = \"".$templates->get("paper_add_paper")."\";");
-		eval("\$add_article = \"".$templates->get("paper_add_article")."\";");
-			
+	if ($sizes === false)
+	{
+		@unlink($imgpath);
+		move_uploaded_file($_FILES['uploadImg']['tmp_name'], 'upload/' . $_FILES['uploadImg']['name']);
+		$_FILES['uploadImg']['tmp_name'] = $imgpath;
+		$sizes = getimagesize($_FILES['uploadImg']['tmp_name']);
+		$fail = true;
+	}
+
+	// No size, so something could be wrong with image
+	if ($sizes === false)
+	{
+		echo "<script>alert('Dein Bild entspricht nicht den erlaubten Maßen.')</script>";
+	}
+	elseif ((!empty($uploadImgWidth) && $sizes[0] > $uploadImgWidth) || (!empty($uploadImgHeight) && $sizes[1] > $uploadImgHeight))
+	{
+		@unlink($_FILES['uploadImg']['tmp_name']); //delete
+		echo "<script>alert('Dein Bild entspricht nicht den erlaubten Maßen.')</script>";
+	}
+
+	else
+	{
+
+		$filesize = $_FILES['uploadImg']['size'];
+		if (!empty($maxfilesize) && $filesize > $maxfilesize)
+		{
+			@unlink($_FILES['uploadImg']['tmp_name']); //delete
+			echo "<script>alert('Die Dateigröße des Bildes ist zu groß.')</script>";
+		}
+
+		$filetypes = array(
+			1 => 'gif',
+			2 => 'jpeg',
+			3 => 'png',
+			4 => 'bmp',
+			5 => 'tiff',
+			6 => 'jpg',
+		);
+
+		if (isset($filetypes[$sizes[2]]))
+		{
+			$filetyp = $filetypes[$sizes[2]];
+		}
+		else
+		{
+			$filetyp = '.bmp';
+		}
+		$filename = $mybb->user['uid'] . '-' . date('d_m_y_g_i_s') . '.' . $filetyp;
+
+		if ($fail == false)
+		{
+			move_uploaded_file($_FILES['uploadImg']['tmp_name'], $imgpath . $filename);
+		}
+		else
+		{
+			rename($_FILES['uploadImg']['tmp_name'], $imgpath . $filename);
+		}
+		@chmod($imgpath . $filename, 0644);
+		$db->write_query("INSERT INTO " . TABLE_PREFIX . "paper_imgs
+						(paper_filesize, paper_filename, paper_width, paper_height, paper_uid, paper_aid, paper_type)
+						VALUES ( $filesize,'$filename', $sizes[0], $sizes[1], " . $mybb->user['uid'] . ", $id, '$type')");
+	}
+
+}
+
+function paper_misc()
+{
+	global $db, $cache, $mybb, $templates, $theme, $header, $headerinclude, $footer, $page, $paper, $sendnew_article,$sendnew_paper, $zeitungenrpg_rubriken;
+
+//----------------------------------------------------------HAUPTSEITE ERSTELLEN
+	if ($mybb->input['action'] == "paper")
+	{
+		// Add a breadcrumb
+		add_breadcrumb('Zeitungen', "misc.php?action=paper");
+
+		eval("\$add_paper = \"" . $templates->get("paper_add_paper") . "\";");
+		eval("\$add_article = \"" . $templates->get("paper_add_article") . "\";");
+
 		//ZEITUNGSÜBERSICHT AUF HAUPTSEITE ERWEITERT SICH IMMER BEI EINEM NEUEN ZEITUNGSEINTRAG
-		$sql = "SELECT * FROM ".TABLE_PREFIX."paper";
-    	$query = $db->query($sql);
-    	while($paper = $db->fetch_array($query)) {
-      		eval("\$paper_view .= \"".$templates->get("paper_viewpaper")."\";");
-    	}
-		
-        eval("\$page = \"".$templates->get("paper_main")."\";");
-        output_page($page);
-    }
-	
-	//ÜBERSICHT NACHDEM MAN AUF DEN ZEITUNGSNAMEN GEKLICKT HAT 
+		$sql = "SELECT * FROM " . TABLE_PREFIX . "paper";
+		$query = $db->query($sql);
+		while ($paper = $db->fetch_array($query))
+		{
+			$zid = $paper['zid'];
+			$papercreator = $paper['papercreator'];
+						
+			if ($papercreator == $mybb->user['uid'] || $mybb->usergroup['cancp'] == 1)
+			{
+				$paperedit ="<a href=\"misc.php?action=paper_edit&paperid={$paper['zid']}&my_post_key={$mybb->post_code}\"><i class='far fa-edit' title='Zeitung bearbeiten'></i></a>";
+			}
+			else 
+			{
+				$paperedit ="";
+			}
+			
+			
+			if ($mybb->usergroup['cancp'] == 1)
+			{
+				$paperdelete ="<a href=\"misc.php?action=paperdelete&paperid={$paper['zid']}&my_post_key={$mybb->post_code}\"><i class='far fa-trash-alt' title='Zeitung löschen'></i></a>";
+			}
+			else 
+			{
+				$paperdelete ="";
+			}
+						
+			
+			eval("\$paper_view .= \"" . $templates->get("paper_viewpaper") . "\";");
+		}
+
+		eval("\$page = \"" . $templates->get("paper_main") . "\";");
+		output_page($page);
+	}
+
+//----------------------------------------------------------ÜBERSICHT NACHDEM MAN AUF DEN ZEITUNGSNAMEN GEKLICKT HAT
 	$paperentry = $mybb->input['paperentry'];
 	$paperid = $mybb->input['paperid'];
 
-    if($paperentry){
-				
+	if ($paperentry)
+	{
+
 		add_breadcrumb('Zeitungen', "misc.php?action=paper");
 		add_breadcrumb('Artikelübersicht', "misc.php?paperentry={$paper['paper']}&{$paper['zid']}");
 
 		$articlesql = $db->query("SELECT * 
-		FROM ".TABLE_PREFIX."paper_article
-		where zid = '".$paperid."'
+		FROM " . TABLE_PREFIX . "paper_article
+		where zid = '" . $paperid . "'
 		ORDER BY articledate ASC");
-		while($paper_article = $db->fetch_array($articlesql)) {
-			
+		while ($paper_article = $db->fetch_array($articlesql))
+		{
+
 			$aid = $paper_article['aid'];
 			$articlecreator = $paper_article['articlecreator'];
-							
-			if ($articlecreator == $mybb->user['uid'] || $mybb->usergroup['cancp'] == 1)  {	
-				$article_options = "<a href=\"misc.php?action=articleentry_edit&articleid={$paper_article['aid']}\">Editieren</a> | Löschen";
-			}
-			else {
-            $article_options = "";
-        	}
-			
-      		eval("\$article_overview .= \"".$templates->get("paper_article_overview_bit")."\";");
-    	}		
+			$articledate = date("d.m.Y", strtotime($paper_article['articledate'])); //Datum richtig formatieren nach Tag.Monat.Jahr
 
-        eval("\$page = \"".$templates->get("paper_article_overview")."\";");
-        output_page($page);
-    }
-	
-	//ÜBERSICHT NACHDEM MAN AUF DEN ARTIKELTITEL GEKLICKT HAT 
+
+			if ($articlecreator == $mybb->user['uid'] || $mybb->usergroup['cancp'] == 1)
+			{
+				$article_options = "<a href=\"misc.php?action=articleentry_edit&articleid={$paper_article['aid']}&my_post_key={$mybb->post_code}\"><i class='far fa-edit' title='Artikel bearbeiten'></i></a> | <a href=\"\"><i class='far fa-trash-alt' title='Artikel löschen'></i></a>";
+			}
+			else
+			{
+				$article_options = "";
+			}
+
+			eval("\$article_overview .= \"" . $templates->get("paper_article_overview_bit") . "\";");
+		}
+
+		eval("\$page = \"" . $templates->get("paper_article_overview") . "\";");
+		output_page($page);
+	}
+
+//----------------------------------------------------------ÜBERSICHT NACHDEM MAN AUF DEN ARTIKELTITEL GEKLICKT HAT
 	$articleentry = $mybb->input['articleentry'];
 	$articleid = $mybb->input['articleid'];
-	$articltitle = $mybb->input['articletitle'];
-	
-    if($articleentry){
-		
+	$articletitle = $mybb->input['articletitle'];
+	$articlepicture = $mybb->input['articlepicture'];
+
+	if ($articleentry)
+	{
+
 		add_breadcrumb('Zeitungen', "misc.php?action=paper");
 		add_breadcrumb('Artikel anzeigen', "misc.php?articleentry={$paper_article['aid']}");
-		
+
 		$articleview = "SELECT * 
-		FROM ".TABLE_PREFIX."paper_article 
-		LEFT JOIN  ".TABLE_PREFIX."paper 
-		ON ".TABLE_PREFIX."paper.zid = ".TABLE_PREFIX."paper.zid
-		where aid = '".$articleid."'
+		FROM " . TABLE_PREFIX . "paper_article pa
+		LEFT JOIN  " . TABLE_PREFIX . "paper p
+		ON pa.zid = p.zid
+		where aid = '" . $articleid . "'
 		";
 		$query = $db->query($articleview);
 		$article = $db->fetch_array($query);
-				
-        eval("\$page .= \"".$templates->get("paper_article_view")."\";");
-        output_page($page);
-    }
-	
+		$articledate = date("d.m.Y", strtotime($article['articledate'])); //Datum richtig formatieren nach Tag.Monat.Jahr
 		
-	//NEUE ZEITUNG HINZUFÜGEN     
-    if($mybb->input['action'] == "add_paper")
-    {
-        if (!is_member($mybb->settings['zeitungenrpg_allow_groups_paper'])) {
-            error_no_permission();
-            return;
-             }   
-    
-            // Add a breadcrumb
-			add_breadcrumb('Zeitungen', "misc.php?action=paper");
-            add_breadcrumb('Zeitung hinzufügen', "misc.php?action=add_paper");
-			
-			//ANSTELLE VON INSERT NEHMEN WIR DAS FÜR DAS FORMULAR
-			if($_POST['send_paper']){
+		//Wenn kein Artikelbild angegeben ist, dann nichts anzeigen.
+		if (!empty($article['articlepicture']))
+		{
+			$article['articlepicture'] = "<br><br><img src='{$article['articlepicture']}' id='rnimg'>";
+		}
+		else
+		{
+			$article['articlepicture'] = "";
+		}
 
-                $sendnew_paper = array(
-                    "zid" => (int)$_POST['paper'],
-                    "paper" => $db->escape_string($_POST['paper']),
-                    "paperdesc" => $db->escape_string($_POST['paperdesc']),
-                    "action" => $db->escape_string($_POST['page']),
-					"zpicture" => $db->escape_string($_POST['zpicture']),
-					"papercreator" => (int) $mybb->user['uid']
-                );
+		//Wenn kein Werbungstext angegeben ist, dann keinen footer anzeigen
+		if (!empty($article['werbung']))
+		{
+			$article['werbung'] = "<div id='rnfooter'><div id='rnpfeil'>&#x2192;</div> {$article['werbung']}</div>";
+		}
+		else
+		{
+			$article['werbung'] = "";
+		}
 
-                $db->insert_query("paper", $sendnew_paper);
-                redirect("misc.php?action=paper");
-            }
-    
-		eval("\$page = \"".$templates->get("paper_addpaper_formular")."\";");    
+		eval("\$page .= \"" . $templates->get("paper_article_view") . "\";");
 		output_page($page);
 	}
-	
-	//NEUEN ARTIKEL HINZUFÜGEN     
-    if($mybb->input['action'] == "add_article")
-    {
-        if (!is_member($mybb->settings['zeitungenrpg_allow_groups_articel'])) {
-            error_no_permission();
-            return;
-             }
-    
-            // Add a breadcrumb
-			add_breadcrumb('Zeitungen', "misc.php?action=paper");
-            add_breadcrumb('Artikel hinzufügen', "misc.php?action=add_article");
-			
-			$paperrubrik_setting = $mybb->settings['zeitungenrpg_rubriken'];
-		
-			$paper_rubriks = explode(", ", $paperrubrik_setting);
-		
-			foreach ($paper_rubriks as $paper_rubrik){
-            $zeitungenrpg_rubriken .= "<option value='{$paper_rubrik}'>{$paper_rubrik}</option>";
-        	}
-			
-            $paper_query = $db->query("SELECT *
-            FROM ".TABLE_PREFIX."paper
-            ORDER BY paper ASC
-            ");
 
-            while($row = $db->fetch_array($paper_query)){
-                $paper .= "<option value='{$row['zid']}'>{$row['paper']}</option>";
-            }
-			
-		
-			
-			//ANSTELLE VON INSERT NEHMEN WIR DAS FÜR DAS FORMULAR
-			if($_POST['send_article']){
+//----------------------------------------------------------NEUE ZEITUNG HINZUFÜGEN
+	if ($mybb->input['action'] == "add_paper")
+	{
+		if (!is_member($mybb->settings['zeitungenrpg_allow_groups_paper']))
+		{
+			error_no_permission();
+			return;
+		}
 
-                $sendnew_article = array(
-					"zid" => (int)$_POST['paper'],
-					"articlecreator" => (int) $mybb->user['uid'],
-                    "articletitle" => $db->escape_string($_POST['articletitle']),
-                    "article" => $db->escape_string($_POST['article']),
-					"werbung" => $db->escape_string($_POST['werbung']),
-                    "articlepicture" => $db->escape_string($_POST['articlepicture']),
-					"articleauthor" => $db->escape_string($_POST['articleauthor']),
-					"articledate" => $db->escape_string($_POST['articledate']),
-					"zeitungenrpg_rubriken" => $db->escape_string($_POST['zeitungenrpg_rubriken'])
-                );
-
-                $db->insert_query("paper_article", $sendnew_article);
-                redirect("misc.php?action=paper");
-            }
-    
-		eval("\$page = \"".$templates->get("paper_addarticle_formular")."\";");    
-		output_page($page);
-	}
-	
-	
-	//HIER KÖNNEN ARTIKEL EDITIERT WERDEN 	
-	if($mybb->get_input('action') == 'articleentry_edit') {
-		
+		// Add a breadcrumb
 		add_breadcrumb('Zeitungen', "misc.php?action=paper");
-		add_breadcrumb('Artikel editieren', "misc.php?action=paperentry_edit");
-		
-		$aid = $mybb->input['edit'];
-		
-		$query = $db->query("SELECT *
-        FROM ".TABLE_PREFIX."paper_article pa
-        LEFT JOIN ".TABLE_PREFIX."paper p
-        on (pa.zid = p.zid)
-        LEFT JOIN ".TABLE_PREFIX."users u
-        on (pa.articlecreator = u.uid)
-        WHERE pa.articlecreator = '".$aid."'   
-        ");
-		
-		$row = $db->fetch_array($query);
-		
-		$aid = "";
-        $articletitle = "";
-        $aid = "";
-		$articlepicture = "";
-		$articleauthor = "";
-		$articledate = "";
-		$zeitungenrpg_rubriken = "";
-        $article = "";
-		$werbung = "";
-        $user = "";
-		
-		//Füllen wir mal alles mit Informationen
-        $username = format_name($row['username'], $row['usergroup'], $row['displaygroup']);
-        $user = build_profile_link($username, $row['uid']);
-        $articletitle = $row['articletitle'];
-        $articlepicture = $row['articlepicture'];
-        $articleauthor = $row['articleauthor'];
-        $articledate = $row['articledate'];
-        $aid = $row['aid'];
-        $article = $row['article'];
-		$werbung = $row['werbung'];
-        $zid = $row['zid'];
-        $aid = $row['aid'];
-		
+		add_breadcrumb('Zeitung hinzufügen', "misc.php?action=add_paper");
+
+		//ANSTELLE VON INSERT NEHMEN WIR DAS FÜR DAS FORMULAR
+		if ($_POST['send_paper'])
+		{
+
+			$sendnew_paper = array(
+				'zid' => (int)$_POST['paper'],
+				'paper' => $db->escape_string($_POST['paper']) ,
+				'paperdesc' => $db->escape_string($_POST['paperdesc']) ,
+				'action' => $db->escape_string($_POST['page']) ,
+				'zpicture' => $db->escape_string($_POST['zpicture']) ,
+				'papercreator' => (int)$mybb->user['uid']
+			);
+
+			$db->insert_query("paper", $sendnew_paper);
+			redirect("misc.php?action=paper");
+		}
+
+		eval("\$page = \"" . $templates->get("paper_addpaper_formular") . "\";");
+		output_page($page);
+	}
+
+//----------------------------------------------------------NEUEN ARTIKEL HINZUFÜGEN
+	if ($mybb->input['action'] == "add_article")
+	{
+		if (!is_member($mybb->settings['zeitungenrpg_allow_groups_articel']))
+		{
+			error_no_permission();
+			return;
+		}
+
+		// Add a breadcrumb
+		add_breadcrumb('Zeitungen', "misc.php?action=paper");
+		add_breadcrumb('Artikel hinzufügen', "misc.php?action=add_article");
+
+		$paperrubrik_setting = $mybb->settings['zeitungenrpg_rubriken'];
+
+		$paper_rubriks = explode(", ", $paperrubrik_setting);
+
+		foreach ($paper_rubriks as $paper_rubrik)
+		{
+			$zeitungenrpg_rubriken .= "<option value='{$paper_rubrik}'>{$paper_rubrik}</option>";
+		}
+
 		$paper_query = $db->query("SELECT *
-            FROM ".TABLE_PREFIX."paper
-            ORDER BY paper ASC
-            ");
+			FROM " . TABLE_PREFIX . "paper
+			ORDER BY paper ASC
+			");
 
-        while($paper = $db->fetch_array($paper_query)){
+		while ($row = $db->fetch_array($paper_query))
+		{
+			$paper .= "<option value='{$row['zid']}'>{$row['paper']}</option>";
+		}
 
-            if($zid == $zat['zid']){
-                $select = "selected=\"selected\"";
-            } else {
-                $select = "";
-            }
+		//ANSTELLE VON INSERT NEHMEN WIR DAS FÜR DAS FORMULAR
+		if ($_POST['send_article'])
+		{
+
+			$sendnew_article = array(
+				'zid' => (int)$_POST['paper'],
+				'articlecreator' => (int)$mybb->user['uid'],
+				'articletitle' => $db->escape_string($_POST['articletitle']) ,
+				'article' => $db->escape_string($_POST['article']) ,
+				'werbung' => $db->escape_string($_POST['werbung']) ,
+				'articlepicture' => $db->escape_string($_POST['articlepicture']) ,
+				'articleauthor' => $db->escape_string($_POST['articleauthor']) ,
+				'articledate' => $db->escape_string($_POST['articledate']) ,
+				'zeitungenrpg_rubriken' => $db->escape_string($_POST['zeitungenrpg_rubriken'])
+			);
+
+			$db->insert_query("paper_article", $sendnew_article);
+			redirect("misc.php?action=paper");
+		}
+
+		eval("\$page = \"" . $templates->get("paper_addarticle_formular") . "\";");
+		output_page($page);
+	}
+
+//----------------------------------------------------------HIER KÖNNEN ARTIKEL EDITIERT WERDEN
+	if ($mybb->get_input('action') == 'articleentry_edit')
+	{
+		//wenn eine articleid und ein postkey übergeben wurden
+		if (isset($mybb->input['articleid'], $mybb->input["my_post_key"]))
+		{
+			//lege dafür Variablen an
+			$articleid = $mybb->input['articleid'];
+			$is_valid = verify_post_check($mybb->input['my_post_key'], true); //user-session-key
+			
+		}
+		else
+		{
+			$articleid = "";
+		}
+
+		// wenn eine articleid und User-Session existieren
+		if ($articleid && $is_valid)
+		{
+
+			// Add a breadcrumb
+			add_breadcrumb('Zeitungen', "misc.php?action=paper");
+			add_breadcrumb('Artikel editieren', "misc.php?action=paperentry_edit");
 
 
-            $edit_paperentry .= "<option value='{$zid['zid']}' {$select}>{$zid['paper']} </option>";
-        }
-		
-		//Der neue Inhalt wird nun in die Datenbank eingefügt bzw. die alten daten Überschrieben.
-        if($_POST['edit_article_entry']){
-            $aid = $mybb->input['aid'];
-            $edit_entry = array(
-                "zid" => (int)$_POST['paper'],
-                "articletitle" => $db->escape_string($_POST['articletitle']),
-                "article" => $db->escape_string($_POST['article']),
-				"werbung" => $db->escape_string($_POST['werbung']),
-                "articlepicture" => $db->escape_string($_POST['articlepicture']),
-				"articleauthor" => $db->escape_string($_POST['articleauthor']),
-				"articledate" => $db->escape_string($_POST['articledate']),
-				"zeitungenrpg_rubriken" => $db->escape_string($_POST['zeitungenrpg_rubriken'])
-            );
+			//Zeitungen ausgeben Teil 1
+			$paper_query = $db->query("SELECT *
+				FROM " . TABLE_PREFIX . "paper
+				ORDER BY paper ASC
+				");
 
-            $db->update_query("paper_article", $edit_entry, "aid = '".$aid."'");
-            redirect("misc.php?action=paper");
-        }
+			//Rubriken ausgeben Teil 1
+			$paperrubrik_setting = $mybb->settings['zeitungenrpg_rubriken'];
+			$paper_rubriks = explode(", ", $paperrubrik_setting);
 
-        eval("\$page = \"".$templates->get("paper_article_edit")."\";");
-        output_page($page);
 
-    }
-		
+			//Daten d. Artikels, der editiert werden soll, auslesen
+			$article_select = $db->simple_select("paper_article", "*", "aid = '$articleid'");
+
+			while ($articlerow = $db->fetch_array($article_select))
+			{
+				$article_zid = $articlerow['zid'];
+				$articletitle = $articlerow['articletitle'];
+				$articletext = $articlerow['article'];
+				$werbung = $articlerow['werbung'];
+				$articlepicture = $articlerow['articlepicture'];
+				$articleauthor = $articlerow['articleauthor'];
+				$articledate = $articlerow['articledate'];
+				$articlerubrik = $articlerow['zeitungenrpg_rubriken'];
+
+				//Zeitungen auslesen Teil 2
+				while ($row = $db->fetch_array($paper_query))
+				{
+					//vergleiche die Zeitungs-ID des ausgewählten Artikels mit allen bestehenden IDs
+					// wenn sie gleich sind, also die zid des Artikels der zid aus den settings übereinstimmt
+					if ($article_zid == $row['zid'])
+					{
+						//wähle es mit selected aus
+						$paper .= "<option value='{$row['zid']}' selected>{$row['paper']}</option>";
+					}
+					else
+					{	
+						//wenn es nicht übereinstimmt, bereite alle anderen zeitungs-optionen ohne selected vor
+						$paper .= "<option value='{$row['zid']}'>{$row['paper']}</option>";
+					}
+
+				}
+
+				//Rubriken ausgeben Teil 2
+				// Artikelauswahl vor-selektieren, je nachdem, was bei der Erstellung bzw. letzten Änderung des Artikels in der DB gespeichert war
+				foreach ($paper_rubriks as $paper_rubrik)
+				{
+
+					//vergleiche die Rubrik des ausgewählten Artikels mit allen bestehenden Rubriken aus den Settings
+					if ($paper_rubrik == $articlerubrik)
+					{	
+						//wenn sie übereinstimmt, wähle als selected aus
+						$zeitungenrpg_rubriken .= "<option value='{$paper_rubrik}' selected>{$paper_rubrik}</option>";
+					}
+					else
+					{	
+						//wenn sie nicht übereinstimmt, bereite alle anderen rubrik-optionen ohne selected vor
+						$zeitungenrpg_rubriken .= "<option value='{$paper_rubrik}'>{$paper_rubrik}</option>";
+					}
+
+				}
+			}
+
+			//ANSTELLE VON INSERT NEHMEN WIR DAS FÜR DAS FORMULAR
+			if ($_POST['editarticle'])
+			{
+				$aid = $mybb->input['articleid'];
+				//alle Daten aus dem Formular in einem Array speichern
+				$sendnew_article = array(
+					'zid' => (int)$_POST['paper'],
+					'articlecreator' => (int)$mybb->user['uid'],
+					'articletitle' => $db->escape_string($_POST['articletitle']) ,
+					'article' => $db->escape_string($_POST['article']) ,
+					'werbung' => $db->escape_string($_POST['werbung']) ,
+					'articlepicture' => $db->escape_string($_POST['articlepicture']) ,
+					'articleauthor' => $db->escape_string($_POST['articleauthor']) ,
+					'articledate' => $db->escape_string($_POST['articledate']) ,
+					'zeitungenrpg_rubriken' => $db->escape_string($_POST['zeitungenrpg_rubriken'])
+				);
+
+				//hier werden die neu eingegebenen Daten aus dem Formular bzw. dem sendnew_article-array endgültig an die DB geschickt
+				$db->update_query("paper_article", $sendnew_article, "aid = '{$aid}'");
+				redirect("misc.php?action=paper");
+			}
+
+			eval("\$page = \"" . $templates->get("paper_article_edit") . "\";");
+			output_page($page);
+
+		}
+
+	}
+
 	
- 	
+	
+//----------------------------------------------------------HIER KÖNNEN ZEITUNGEN EDITIERT WERDEN
+	if ($mybb->get_input('action') == 'paper_edit')
+	{
+		//wenn eine paperid und ein postkey übergeben wurden
+		if (isset($mybb->input['paperid'], $mybb->input["my_post_key"]))
+		{
+			//lege dafür Variablen an
+			$paperid = $mybb->input['paperid'];
+			$is_valid = verify_post_check($mybb->input['my_post_key'], true); //user-session-key
+			
+		}
+		else
+		{
+			$paperid = "";
+		}
+
+		// wenn eine paperid und User-Session existieren
+		if ($paperid && $is_valid)
+		{
+
+			// Add a breadcrumb
+			add_breadcrumb('Zeitungen', "misc.php?action=paper");
+			add_breadcrumb('Zeitung editieren', "misc.php?action=paper_edit");
+
+		
+			//Daten d. Zeitung, die editiert werden soll, auslesen
+			$paper_select = $db->simple_select("paper", "*", "zid = '$paperid'");
+
+			while ($paperrow = $db->fetch_array($paper_select))
+			{
+				$zpicture = $paperrow['zpicture'];
+				$paperaction = $paperrow['action'];
+				$paper = $paperrow['paper'];
+				$paperdesc = $paperrow['paperdesc'];
+			}
+
+			//ANSTELLE VON INSERT NEHMEN WIR DAS FÜR DAS FORMULAR
+			if ($_POST['editpaper'])
+			{
+				$zid = $mybb->input['paperid'];
+				//alle Daten aus dem Formular in einem Array speichern
+				$sendnew_paper = array(
+					'zpicture' => $db->escape_string($_POST['zpicture']),
+					'action' => $db->escape_string($_POST['paperaction']),
+					'paper' => $db->escape_string($_POST['paper']), 
+					'paperdesc' => $db->escape_string($_POST['paperdesc']),
+					'papercreator' => (int)$mybb->user['uid']
+				);
+
+				//hier werden die neu eingegebenen Daten aus dem Formular bzw. dem sendnew_paper-array endgültig an die DB geschickt
+				$db->update_query("paper", $sendnew_paper, "zid = '{$zid}'");
+				redirect("misc.php?action=paper");
+			}
+
+			eval("\$page = \"" . $templates->get("paper_edit") . "\";");
+			output_page($page);
+
+		}
+
+	}
+	
+
+//----------------------------------------------------------HIER KÖNNEN ZEITUNGEN GELÖSCHT WERDEN
+	if ($action == "paperdelete") 
+	{
+		//wenn eine paperid und ein postkey übergeben wurden
+		if (isset($mybb->input['paperid'], $mybb->input["my_post_key"]))
+		{
+			//lege dafür Variablen an
+			$paperid = $mybb->input['paperid'];
+			$is_valid = verify_post_check($mybb->input['my_post_key'], true); //user-session-key
+		}
+		
+		else 
+		{
+			$paperid ="";
+		}
+		
+		//wenn eine ID und USer-Session existieren 
+		if ($paperid && $is_valid)
+		{	
+					
+			//lade den Eintrag aus der DB wo die ID der ID in der URL entspricht
+			$result = $db->query ("
+			SELECT *
+			FROM ".TABLE_PREFIX."paper 
+			WHERE zid = '" . $paperid . "'
+			");
+			
+			while ($pdeleterow = $db->fetch_array($result)) {
+				$uid = $pdeleterow['papercreator'];
+				$zpicture = $pdeleterow['zpicture'];
+				$action = $pdeleterow['action'];
+				$paper = $pdeleterow['paper'];
+				$paperdesc = $pdeleterow['paperdesc'];
+			}
+			
+			//wenn User Teammitglied ist
+			if ($mybb->usergroup['cancp'] == 1) 
+			{
+				if (isset($_POST['send'])) 
+				{
+					$db->paperdelete_query ('paper', "paperid = '$paperid'");
+					
+					//kehre zur Hauptseite zurück, wenn Zeitung gelöscht ist 
+					redirect("misc.php?action=paper");
+				}
+				else
+				{
+					//lade das Template mit Lösch-Bestätigung
+					eval("\$page = \"" . $templates->get("paper_deletepaper") . "\";");
+				}
+				
+			}
+			else 
+			{
+				// Fehler "Du hast keine Berechtigung"
+				eval("\$page = \"".$templates->get("paper_deleteerror")."\";");
+			}
+			
+		}
+		
+		//wenn keine ID vorhanden bzw ID = leer und post_code stimmt nicht
+		else if (!$paperid || !$is_valid) {
+			//sende Fehlermdlung: Du hast keinen EIntrag ausgewählt
+			eval("\$page = \"".$templates->get("paper_deleteerror1")."\";");
+		}
+	}
+					
+					
+
 }
+
