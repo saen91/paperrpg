@@ -679,6 +679,10 @@ function zeitungenrpg_install()
 	}
 
 	rebuild_settings();
+	
+	if (!is_writable(MYBB_ROOT . 'uploads/paper/')) {
+        @chmod(MYBB_ROOT . 'uploads/paper/', 0755);
+    }
 
 }
 
@@ -755,9 +759,13 @@ function zeitungenrpg_deactivate()
  * @param string $type post or answer
  ** **
  */
-function uploadImg($id, $type)
+function uploadImg()
 {
-	global $db, $mybb, $lang;
+	global $db, $mybb;
+	
+	if(!isset($_GET['file'])) {
+	die("Bitte eine Datei auswählen");
+	}
 
 	$uploadImgWidth = intval($mybb->settings['zeitungenrpg_uploadImgWidth']);
 	$uploadImgHeight = intval($mybb->settings['zeitungenrpg_uploadImgHeight']);
@@ -774,7 +782,7 @@ function uploadImg($id, $type)
 	if ($sizes === false)
 	{
 		@unlink($imgpath);
-		move_uploaded_file($_FILES['uploadImg']['tmp_name'], 'upload/' . $_FILES['uploadImg']['name']);
+		move_uploaded_file($_FILES['uploadImg']['tmp_name'], 'uploads/paper/' . $_FILES['uploadImg']['name']);
 		$_FILES['uploadImg']['tmp_name'] = $imgpath;
 		$sizes = getimagesize($_FILES['uploadImg']['tmp_name']);
 		$fail = true;
@@ -831,7 +839,7 @@ function uploadImg($id, $type)
 		@chmod($imgpath . $filename, 0644);
 		$db->write_query("INSERT INTO " . TABLE_PREFIX . "paper_imgs
 						(paper_filesize, paper_filename, paper_width, paper_height, paper_uid, paper_aid, paper_type)
-						VALUES ( $filesize,'$filename', $sizes[0], $sizes[1], " . $mybb->user['uid'] . ", $id, '$type')");
+						VALUES ( $filesize,'$filename', $sizes[0], $sizes[1], " . $mybb->user['uid'] . ")");
 	}
 
 }
@@ -908,7 +916,7 @@ function paper_misc()
 
 			if ($articlecreator == $mybb->user['uid'] || $mybb->usergroup['cancp'] == 1)
 			{
-				$article_options = "<a href=\"misc.php?action=articleentry_edit&articleid={$paper_article['aid']}&my_post_key={$mybb->post_code}\"><i class='far fa-edit' title='Artikel bearbeiten'></i></a> | <a href=\"\"><i class='far fa-trash-alt' title='Artikel löschen'></i></a>";
+				$article_options = "<a href=\"misc.php?action=articleentry_edit&articleid={$paper_article['aid']}&my_post_key={$mybb->post_code}\"><i class='far fa-edit' title='Artikel bearbeiten'></i></a> | <a href=\"misc.php?action=articledelete&articleid={$paper_article['aid']}&my_post_key={$mybb->post_code}\"><i class='far fa-trash-alt' title='Artikel löschen'></i></a>";
 			}
 			else
 			{
@@ -931,18 +939,25 @@ function paper_misc()
 	if ($articleentry)
 	{
 
-		add_breadcrumb('Zeitungen', "misc.php?action=paper");
-		add_breadcrumb('Artikel anzeigen', "misc.php?articleentry={$paper_article['aid']}");
-
 		$articleview = "SELECT * 
 		FROM " . TABLE_PREFIX . "paper_article pa
 		LEFT JOIN  " . TABLE_PREFIX . "paper p
 		ON pa.zid = p.zid
 		where aid = '" . $articleid . "'
 		";
+		
+		
 		$query = $db->query($articleview);
 		$article = $db->fetch_array($query);
+		$action = ($article['action']);
+		$zid = ($article['zid']);
+		$articletitle = ($article['articletitle']);
 		$articledate = date("d.m.Y", strtotime($article['articledate'])); //Datum richtig formatieren nach Tag.Monat.Jahr
+		
+		add_breadcrumb('Zeitungen', "misc.php?action=paper");
+		add_breadcrumb("Artikelübersicht", "misc.php?paperentry={$action}&paperid={$zid}");
+		add_breadcrumb('Artikel anzeigen', "misc.php?articleentry={$paper_article['aid']}");
+		
 		
 		//Wenn kein Artikelbild angegeben ist, dann nichts anzeigen.
 		if (!empty($article['articlepicture']))
@@ -1078,16 +1093,12 @@ function paper_misc()
 		if ($articleid && $is_valid)
 		{
 
-			// Add a breadcrumb
-			add_breadcrumb('Zeitungen', "misc.php?action=paper");
-			add_breadcrumb('Artikel editieren', "misc.php?action=paperentry_edit");
-
-
 			//Zeitungen ausgeben Teil 1
 			$paper_query = $db->query("SELECT *
 				FROM " . TABLE_PREFIX . "paper
 				ORDER BY paper ASC
 				");
+			
 
 			//Rubriken ausgeben Teil 1
 			$paperrubrik_setting = $mybb->settings['zeitungenrpg_rubriken'];
@@ -1095,7 +1106,15 @@ function paper_misc()
 
 
 			//Daten d. Artikels, der editiert werden soll, auslesen
-			$article_select = $db->simple_select("paper_article", "*", "aid = '$articleid'");
+			$article_select = $db->query ("
+			SELECT *
+			FROM ".TABLE_PREFIX."paper_article pa
+			LEFT JOIN ".TABLE_PREFIX."paper p
+			ON pa.zid = p.zid
+			WHERE aid = '" . $articleid . "'
+			");
+				
+			//$article_select = $db->simple_select("paper_article", "*", "aid = '$articleid'");//
 
 			while ($articlerow = $db->fetch_array($article_select))
 			{
@@ -1107,7 +1126,14 @@ function paper_misc()
 				$articleauthor = $articlerow['articleauthor'];
 				$articledate = $articlerow['articledate'];
 				$articlerubrik = $articlerow['zeitungenrpg_rubriken'];
-
+				$article_action = $articlerow['action'];
+			
+				
+			// Add a breadcrumb
+			add_breadcrumb('Zeitungen', "misc.php?action=paper");			
+			add_breadcrumb("Artikelübersicht", "misc.php?paperentry={$article_action}&paperid={$article_zid}");
+			add_breadcrumb('Artikel editieren', "misc.php?action=paperentry_edit");
+				
 				//Zeitungen auslesen Teil 2
 				while ($row = $db->fetch_array($paper_query))
 				{
@@ -1145,6 +1171,7 @@ function paper_misc()
 
 				}
 			}
+						
 
 			//ANSTELLE VON INSERT NEHMEN WIR DAS FÜR DAS FORMULAR
 			if ($_POST['editarticle'])
@@ -1165,7 +1192,7 @@ function paper_misc()
 
 				//hier werden die neu eingegebenen Daten aus dem Formular bzw. dem sendnew_article-array endgültig an die DB geschickt
 				$db->update_query("paper_article", $sendnew_article, "aid = '{$aid}'");
-				redirect("misc.php?action=paper");
+				redirect("misc.php?articleentry={$articletitle}&articleid={$aid}");
 			}
 
 			eval("\$page = \"" . $templates->get("paper_article_edit") . "\";");
@@ -1173,6 +1200,89 @@ function paper_misc()
 
 		}
 
+	}
+	
+
+//----------------------------------------------------------HIER KÖNNEN ARTIKEL GELÖSCHT WERDEN
+	if ($mybb->get_input('action') == 'articledelete')
+	{
+		//wenn eine article und ein postkey übergeben wurden
+		if (isset($mybb->input['articleid'], $mybb->input["my_post_key"]))
+		{
+			//lege dafür Variablen an
+			$articleid = $mybb->input['articleid'];
+			$is_valid = verify_post_check($mybb->input['my_post_key'], true); //user-session-key
+		}
+		else
+		{
+			$articleid = "";
+		}
+		
+		//wenn eine ID und USer-Session existieren 
+		if ($articleid && $is_valid)
+		{		
+			
+			//lade den Eintrag aus der DB wo die ID der ID in der URL entspricht
+			$result = $db->query ("
+			SELECT *
+			FROM ".TABLE_PREFIX."paper_article pa
+			LEFT JOIN ".TABLE_PREFIX."paper p
+			ON pa.zid = p.zid
+			WHERE aid = '" . $articleid . "'
+			");
+					
+			
+			while ($adeleterow = $db->fetch_array($result)) {
+				$articlecreator = $adeleterow['articlecreator'];
+				$zid = $adeleterow['zid'];
+				$action = $adeleterow['action'];
+				$uid = $adeleterow['articlecreator'];
+				$articletitle = $adeleterow['articletitle'];
+				$article = $adeleterow['article'];
+				$werbung = $adeleterow['werbung'];				
+				$articlepicture = $adeleterow['articlepicture'];
+				$articleauthor = $adeleterow['articleauthor'];
+				$articledate = $adeleterow['articledate'];
+				$zeitungenrpg_rubriken = $adeleterow['articlezeitungenrpg_rubriken'];
+			}
+			
+			
+			// Add a breadcrumb
+			add_breadcrumb('Zeitungen', "misc.php?action=paper");
+			add_breadcrumb("Artikelübersicht", "misc.php?paperentry={$action}&paperid={$zid}");
+			add_breadcrumb('Artikel löschen', "misc.php?action=articledelete");
+			
+			
+					
+			//wenn User Teammitglied ist oder Artikel erstellt hat
+			
+			if ($articlecreator == $mybb->user['uid'] || $mybb->usergroup['cancp'] == 1) 
+			{
+				if (isset($_POST['articledelete'])) 
+				{
+					$aid = $mybb->input['articleid'];
+					$db->delete_query("paper_article", "aid = '{$aid}'");
+					
+					//kehre zur Artikelübersicht zurück, wenn Artikel gelöscht ist 
+					redirect("misc.php?paperentry={$action}&paperid={$zid}");
+				}
+				else
+				{
+					//lade das Template mit Lösch-Bestätigung
+					eval("\$page = \"" . $templates->get("paper_deletearticle") . "\";");
+				}
+				
+			}
+			else 
+			{
+				// Fehler "Du hast keine Berechtigung"
+				eval("\$page = \"".$templates->get("paper_deleteerror")."\";");
+			}
+			
+		}
+		
+		// gebe die jeweilige Page aus
+		output_page($page);
 	}
 
 	
@@ -1196,7 +1306,6 @@ function paper_misc()
 		// wenn eine paperid und User-Session existieren
 		if ($paperid && $is_valid)
 		{
-
 			// Add a breadcrumb
 			add_breadcrumb('Zeitungen', "misc.php?action=paper");
 			add_breadcrumb('Zeitung editieren', "misc.php?action=paper_edit");
@@ -1212,6 +1321,7 @@ function paper_misc()
 				$paper = $paperrow['paper'];
 				$paperdesc = $paperrow['paperdesc'];
 			}
+				
 
 			//ANSTELLE VON INSERT NEHMEN WIR DAS FÜR DAS FORMULAR
 			if ($_POST['editpaper'])
@@ -1240,7 +1350,7 @@ function paper_misc()
 	
 
 //----------------------------------------------------------HIER KÖNNEN ZEITUNGEN GELÖSCHT WERDEN
-	if ($action == "paperdelete") 
+	if ($mybb->get_input('action') == 'paperdelete')
 	{
 		//wenn eine paperid und ein postkey übergeben wurden
 		if (isset($mybb->input['paperid'], $mybb->input["my_post_key"]))
@@ -1248,16 +1358,20 @@ function paper_misc()
 			//lege dafür Variablen an
 			$paperid = $mybb->input['paperid'];
 			$is_valid = verify_post_check($mybb->input['my_post_key'], true); //user-session-key
+			
 		}
-		
-		else 
+		else
 		{
-			$paperid ="";
+			$paperid = "";
 		}
 		
 		//wenn eine ID und USer-Session existieren 
 		if ($paperid && $is_valid)
 		{	
+			
+			// Add a breadcrumb
+			add_breadcrumb('Zeitungen', "misc.php?action=paper");
+			add_breadcrumb('Zeitung löschen', "misc.php?action=paperdelete");
 					
 			//lade den Eintrag aus der DB wo die ID der ID in der URL entspricht
 			$result = $db->query ("
@@ -1277,9 +1391,10 @@ function paper_misc()
 			//wenn User Teammitglied ist
 			if ($mybb->usergroup['cancp'] == 1) 
 			{
-				if (isset($_POST['send'])) 
+				if (isset($_POST['paperdelete'])) 
 				{
-					$db->paperdelete_query ('paper', "paperid = '$paperid'");
+					$zid = $mybb->input['paperid'];
+					$db->delete_query("paper", "zid = '{$zid}'");
 					
 					//kehre zur Hauptseite zurück, wenn Zeitung gelöscht ist 
 					redirect("misc.php?action=paper");
@@ -1299,11 +1414,8 @@ function paper_misc()
 			
 		}
 		
-		//wenn keine ID vorhanden bzw ID = leer und post_code stimmt nicht
-		else if (!$paperid || !$is_valid) {
-			//sende Fehlermdlung: Du hast keinen EIntrag ausgewählt
-			eval("\$page = \"".$templates->get("paper_deleteerror1")."\";");
-		}
+		// gebe die jeweilige Page aus
+		output_page($page);
 	}
 					
 					
