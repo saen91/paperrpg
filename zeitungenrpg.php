@@ -104,7 +104,6 @@ function zeitungenrpg_install()
 		'value' => '1', // Default
 		'disporder' => 4
 	) ,
-
 	'zeitungenrpg_uploadImgSize' => array(
 		'title' => 'Artikel: Dateigröße',
 		'description' => 'Gebe hier die Dateigröße von den Bildern an, die User hochladen können.',
@@ -465,7 +464,7 @@ function zeitungenrpg_install()
 	</tr>
 	<tr>
 		<td class="trow1" align="center" valign="top">
-		<form id="add_article" method="post" action="misc.php?action=add_article">
+		<form id="add_article" method="post" action="misc.php?action=add_article" enctype="multipart/form-data">
 			<table width="90%">
 				<tr><td class="thead" colspan="2"><strong>Artikel hinzufügen</strong></td></tr>
 				<tr><td class="trow2"><strong>Zeitung auswählen</strong></td>
@@ -755,23 +754,23 @@ function zeitungenrpg_deactivate()
 
 /** **
  * Upload of images
- * @param int $id to which id of Post or answer
- * @param string $type post or answer
+ * @param int $lastaId to which id of Post or answer
+ * @param string $type paper or article
  ** **
  */
-function uploadImg()
+function uploadImg($lastaId,$type)
 {
 	global $db, $mybb;
 	
-	if(!isset($_GET['file'])) {
-	die("Bitte eine Datei auswählen");
-	}
-
 	$uploadImgWidth = intval($mybb->settings['zeitungenrpg_uploadImgWidth']);
 	$uploadImgHeight = intval($mybb->settings['zeitungenrpg_uploadImgHeight']);
 	$maxfilesize = intval($mybb->settings['zeitungenrpg_uploadImgSize']);
 	$fail = false;
 	$sizes = getimagesize($_FILES['uploadImg']['tmp_name']);
+	
+	
+	
+	
 
 	$imgpath = "uploads/paper/";
 	if (!is_writable('uploads/paper/'))
@@ -838,11 +837,12 @@ function uploadImg()
 		}
 		@chmod($imgpath . $filename, 0644);
 		$db->write_query("INSERT INTO " . TABLE_PREFIX . "paper_imgs
-						(paper_filesize, paper_filename, paper_width, paper_height, paper_uid, paper_aid, paper_type)
-						VALUES ( $filesize,'$filename', $sizes[0], $sizes[1], " . $mybb->user['uid'] . ")");
+                        (paper_filesize, paper_filename, paper_width, paper_height, paper_uid, paper_aid, paper_type)
+                        VALUES ( $filesize,'$filename', $sizes[0], $sizes[1], " . $mybb->user['uid'] . ", $lastaId, '$type')");
 	}
 
 }
+
 
 function paper_misc()
 {
@@ -1018,6 +1018,8 @@ function paper_misc()
 	}
 
 //----------------------------------------------------------NEUEN ARTIKEL HINZUFÜGEN
+	$articleid = $mybb->input['articleid'];
+	
 	if ($mybb->input['action'] == "add_article")
 	{
 		if (!is_member($mybb->settings['zeitungenrpg_allow_groups_articel']))
@@ -1064,6 +1066,20 @@ function paper_misc()
 				'articledate' => $db->escape_string($_POST['articledate']) ,
 				'zeitungenrpg_rubriken' => $db->escape_string($_POST['zeitungenrpg_rubriken'])
 			);
+			
+			$databasename = $db->fetch_field($db->write_query("SELECT DATABASE()"), "DATABASE()");
+			$lastaId = $db->fetch_field($db->write_query("SELECT AUTO_INCREMENT FROM information_schema.TABLES 
+			WHERE TABLE_SCHEMA = '" . $databasename . "' AND TABLE_NAME = '" . TABLE_PREFIX . "paper_article'"), "AUTO_INCREMENT");  
+			
+		
+			if (isset($_FILES['uploadImg']['name']) && $_FILES['uploadImg']['name'] != '') {
+					uploadImg($lastaId, "article");
+			}
+
+			if (isset($lastaId)) {
+				uploadImg($lastaId, "article");
+			}
+			
 
 			$db->insert_query("paper_article", $sendnew_article);
 			redirect("misc.php?action=paper");
